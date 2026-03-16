@@ -159,4 +159,88 @@ function createMainWindow() {
   return win;
 }
 
-module.exports = { createMainWindow };
+// ---------------------------------------------------------------------------
+// Mini-player state
+// ---------------------------------------------------------------------------
+
+/** Dimensions used when the window is in mini-player mode. */
+const MINI_WIDTH  = 320;
+const MINI_HEIGHT = 90;
+
+/**
+ * Tracks whether the window is currently in mini-player mode.
+ * @type {boolean}
+ */
+let miniPlayerActive = false;
+
+/**
+ * Saved normal-mode bounds so we can restore them when leaving mini-player.
+ * @type {{ width: number, height: number, x?: number, y?: number } | null}
+ */
+let savedNormalBounds = null;
+
+// ---------------------------------------------------------------------------
+// Window visibility / mini-player helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the first open (non-destroyed) BrowserWindow, or null.
+ *
+ * @returns {BrowserWindow | null}
+ */
+function getMainWindow() {
+  const wins = BrowserWindow.getAllWindows();
+  if (wins.length === 0) return null;
+  const win = wins[0];
+  return win.isDestroyed() ? null : win;
+}
+
+/**
+ * Toggles the main window between visible and hidden.
+ * When shown, the window is also focused and brought to the front.
+ */
+function toggleVisibility() {
+  const win = getMainWindow();
+  if (!win) return;
+
+  if (win.isVisible()) {
+    win.hide();
+  } else {
+    win.show();
+    win.focus();
+  }
+}
+
+/**
+ * Toggles between the normal window size and a compact mini-player view.
+ *
+ * Mini-player mode resizes the window to MINI_WIDTH × MINI_HEIGHT and makes
+ * it always-on-top.  Calling again restores the previous normal bounds.
+ */
+function toggleMiniPlayer() {
+  const win = getMainWindow();
+  if (!win) return;
+
+  if (!miniPlayerActive) {
+    // Enter mini-player mode: save current bounds, resize.
+    savedNormalBounds = win.getNormalBounds();
+    win.setResizable(false);
+    win.setAlwaysOnTop(true);
+    win.setSize(MINI_WIDTH, MINI_HEIGHT, true);
+    miniPlayerActive = true;
+  } else {
+    // Exit mini-player mode: restore saved bounds.
+    win.setAlwaysOnTop(false);
+    win.setResizable(true);
+    if (savedNormalBounds) {
+      win.setSize(savedNormalBounds.width, savedNormalBounds.height, true);
+      if (savedNormalBounds.x !== undefined && savedNormalBounds.y !== undefined) {
+        win.setPosition(savedNormalBounds.x, savedNormalBounds.y, true);
+      }
+      savedNormalBounds = null;
+    }
+    miniPlayerActive = false;
+  }
+}
+
+module.exports = { createMainWindow, getMainWindow, toggleVisibility, toggleMiniPlayer };
