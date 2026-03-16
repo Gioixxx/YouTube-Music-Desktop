@@ -50,9 +50,10 @@
         }
       ],
       "icon": "assets/icons/icon.ico",
-      "signingHashAlgorithms": ["sha256"],
-      "certificateFile": "${env.WIN_CSC_LINK}",
-      "certificatePassword": "${env.WIN_CSC_KEY_PASSWORD}"
+      "publisherName": "Gioixxx",
+      "signingHashAlgorithms": [
+        "sha256"
+      ]
     },
     "nsis": {
       "oneClick": false,
