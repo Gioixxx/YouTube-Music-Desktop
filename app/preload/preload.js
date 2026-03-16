@@ -32,6 +32,38 @@ const ALLOWED_RECEIVE_CHANNELS = [
   'settings:updated',
 ];
 
+// ---------------------------------------------------------------------------
+// MediaSession integration
+//
+// Register action handlers so OS-level media controls (Windows Transport
+// Controls, macOS Now Playing widget, Linux MPRIS) forward commands to the
+// main process, which routes them to mediaController.
+//
+// We set these up immediately in the preload so they are in place before
+// the page's own MediaSession handlers run.  If YouTube Music later
+// overwrites them for track metadata updates, the globalShortcut bindings
+// registered in the main process remain as a hardware-key fallback.
+// ---------------------------------------------------------------------------
+if (typeof navigator !== 'undefined' && navigator.mediaSession) {
+  const mediaActions = {
+    play:           'media:play',
+    pause:          'media:pause',
+    nexttrack:      'media:next',
+    previoustrack:  'media:previous',
+    stop:           'media:pause',
+  };
+
+  Object.entries(mediaActions).forEach(([action, channel]) => {
+    try {
+      navigator.mediaSession.setActionHandler(action, () => {
+        ipcRenderer.send(channel);
+      });
+    } catch {
+      // Older Electron builds may not support every action type — ignore.
+    }
+  });
+}
+
 contextBridge.exposeInMainWorld('ytmdAPI', {
   /** App version exposed to renderer */
   version: '1.0.0',

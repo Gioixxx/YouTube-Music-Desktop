@@ -3,9 +3,11 @@
 const { app, BrowserWindow } = require('electron');
 const { createMainWindow } = require('./windowManager');
 const { initSecurity } = require('./securityManager');
+const { initMediaSession, unregisterMediaKeys } = require('./mediaSessionManager');
 
 app.whenReady().then(() => {
   initSecurity();
+  initMediaSession();
   createMainWindow();
 
   app.on('activate', () => {
@@ -13,6 +15,10 @@ app.whenReady().then(() => {
       createMainWindow();
     }
   });
+});
+
+app.on('will-quit', () => {
+  unregisterMediaKeys();
 });
 
 app.on('window-all-closed', () => {
