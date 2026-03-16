@@ -13,14 +13,22 @@
  *   Ctrl+Alt+M  — Toggle mini-player mode
  *   Ctrl+Alt+Y  — Show / hide application window
  *
- * All shortcuts are unregistered on app 'will-quit' to prevent leaks.
- * Call initShortcuts() inside app.whenReady(), and unregisterShortcuts()
- * on app 'will-quit'.
+ * Whether shortcuts are registered is controlled by the
+ * `enableGlobalShortcuts` key in configStore (default: true).
+ *
+ * Call initShortcuts() inside app.whenReady().
+ * Call unregisterShortcuts() on app 'will-quit' to avoid OS-level leaks.
+ * Call reloadShortcuts(enabled) (or send the 'shortcuts:reload' IPC message)
+ * to dynamically enable or disable shortcuts at runtime.
  */
 
-const { globalShortcut } = require('electron');
+const { globalShortcut, ipcMain } = require('electron');
 const { togglePlay, nextTrack, previousTrack } = require('./mediaController');
 const { toggleVisibility, toggleMiniPlayer } = require('./windowManager');
+const {
+  getEnableGlobalShortcuts,
+  setEnableGlobalShortcuts,
+} = require('./configStore');
 
 // ---------------------------------------------------------------------------
 // Shortcut map
@@ -28,8 +36,6 @@ const { toggleVisibility, toggleMiniPlayer } = require('./windowManager');
 
 /**
  * Default global shortcuts.
- * Each entry maps an accelerator string to its handler function.
- *
  * @type {Array<{ accelerator: string, handler: () => void }>}
  */
 const DEFAULT_SHORTCUTS = [
@@ -41,15 +47,11 @@ const DEFAULT_SHORTCUTS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Public API
+// Internal helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Registers all default global shortcuts.
- * If a shortcut cannot be registered (e.g. taken by another app) a warning
- * is logged but the remaining shortcuts are still registered.
- */
-function initShortcuts() {
+/** Registers all shortcuts unconditionally. */
+function _register() {
   for (const { accelerator, handler } of DEFAULT_SHORTCUTS) {
     const ok = globalShortcut.register(accelerator, handler);
     if (!ok) {
@@ -58,14 +60,53 @@ function initShortcuts() {
   }
 }
 
-/**
- * Unregisters all global shortcuts registered by this module.
- * Should be called on app 'will-quit' to avoid OS-level shortcut leaks.
- */
-function unregisterShortcuts() {
+/** Unregisters all shortcuts unconditionally. */
+function _unregister() {
   for (const { accelerator } of DEFAULT_SHORTCUTS) {
     globalShortcut.unregister(accelerator);
   }
 }
 
-module.exports = { initShortcuts, unregisterShortcuts };
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialises shortcuts based on the persisted `enableGlobalShortcuts` value.
+ * Also registers the IPC handler so the renderer can toggle them at runtime.
+ * Must be called after app.whenReady().
+ */
+function initShortcuts() {
+  if (getEnableGlobalShortcuts()) {
+    _register();
+  }
+
+  // IPC handler: renderer sends ('shortcuts:reload', enabled)
+  // Updates the persisted setting and re-registers/unregisters accordingly.
+  ipcMain.handle('shortcuts:reload', (_event, enabled) => {
+    reloadShortcuts(Boolean(enabled));
+  });
+}
+
+/**
+ * Dynamically enables or disables global shortcuts.
+ * Persists the new value to configStore so the setting survives restarts.
+ *
+ * @param {boolean} enabled - true to register shortcuts, false to unregister.
+ */
+function reloadShortcuts(enabled) {
+  setEnableGlobalShortcuts(enabled);
+  _unregister();
+  if (enabled) {
+    _register();
+  }
+}
+
+/**
+ * Unregisters all shortcuts.  Should be called on app 'will-quit'.
+ */
+function unregisterShortcuts() {
+  _unregister();
+}
+
+module.exports = { initShortcuts, unregisterShortcuts, reloadShortcuts };

@@ -21,6 +21,7 @@ const ALLOWED_SEND_CHANNELS = [
   'media:next',
   'media:previous',
   'track:changed',
+  'shortcuts:reload',
 ];
 
 /**
