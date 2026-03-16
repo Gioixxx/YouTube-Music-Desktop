@@ -1,12 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    Content-Security-Policy:
+      - default-src 'self'  → no inline scripts or external resources by default
+      - script-src 'self'   → only local scripts (ui.js)
+      - style-src 'self' 'unsafe-inline' → allow inline styles for placeholder
+  -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
   <title>YouTube Music Desktop</title>
   <style>
+    :root[data-theme="dark"] {
+      --bg: #0f0f0f;
+      --fg: #ffffff;
+      --muted: #aaaaaa;
+    }
+    :root[data-theme="light"] {
+      --bg: #f5f5f5;
+      --fg: #111111;
+      --muted: #555555;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       display: flex;
@@ -14,16 +31,19 @@
       align-items: center;
       justify-content: center;
       height: 100vh;
-      background: #0f0f0f;
-      color: #fff;
+      background: var(--bg);
+      color: var(--fg);
       font-family: 'Segoe UI', Roboto, sans-serif;
     }
     h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-    p  { color: #aaa; font-size: 1rem; }
+    #status { color: var(--muted); font-size: 1rem; }
   </style>
 </head>
 <body>
   <h1>YouTube Music Desktop</h1>
-  <p>Loading&hellip;</p>
+  <p id="status">Loading&hellip;</p>
+
+  <!-- Renderer entry script — loaded last, after DOM is ready -->
+  <script src="ui.js"></script>
 </body>
 </html>
