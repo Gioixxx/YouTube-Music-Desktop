@@ -1,0 +1,1413 @@
+## 2026-03-07 - US-042: IA: Download modello GGUF consigliato con filtro in base al PC
+
+### Implementato:
+- Creato ISystemSpecsService in Infrastructure/Services con metodi:
+  - GetAvailablePhysicalMemoryMb(): RAM fisica disponibile via GlobalMemoryStatusEx (P/Invoke)
+  - GetTotalPhysicalMemoryMb(): RAM totale del sistema
+  - GetGpuVramMb(): VRAM GPU dedicata (opzionale, via WMI Win32_VideoController)
+- Creato SystemSpecsService in Infrastructure/Services con:
+  - Rilevamento RAM primario via GlobalMemoryStatusEx (kernel32.dll P/Invoke)
+  - Fallback WMI Win32_OperatingSystem se P/Invoke fallisce
+  - Cache per evitare rilevamenti ripetuti (eccetto RAM disponibile che cambia)
+  - Fallback conservativo (2048 MB) se tutto fallisce
+- Aggiunto pacchetto NuGet System.Management 8.0.0 a Infrastructure.csproj
+- Creato RecommendedModel record in ILocalLlmDownloadService.cs con proprietà:
+  - Id, DisplayName, DownloadUrl, FileSizeMb, RequiredRamMb, DestinationFileName, Description
+  - FormattedSize (es. "2.1 GB")
+- Creato ILocalLlmDownloadService con metodi:
+  - GetAllRecommendedModels(): tutti i modelli disponibili
+  - GetModelsCompatibleWithCurrentMachine(ramMb?): filtro con margine 80%
+  - GetMinimumRequiredRam(): RAM minima tra tutti i modelli
+  - DownloadRecommendedModelAsync(): download con progress e cancellation
+  - GetDefaultModelsDirectory(): %LocalAppData%\GestionaleTabacchi\models\llm\
+- Creato LocalLlmDownloadService con manifest 3 modelli Qwen 2.5:
+  - qwen2.5-1.5b-instruct-q4_k_m (Leggero, ~1.1 GB, richiede 3 GB RAM)
+  - qwen2.5-3b-instruct-q4_k_m (Bilanciato, ~2.1 GB, richiede 5 GB RAM)
+  - qwen2.5-7b-instruct-q4_k_m (Avanzato, ~4.7 GB, richiede 10 GB RAM)
+  - URL diretti HuggingFace per download
+  - Validazione dimensione file con tolleranza 5%
+  - Gestione file parziali (.downloading) con cleanup su errore/cancellazione
+- Aggiornato AgentSettingsDialog.xaml con sezione download:
+  - Info RAM con badge colorato (blu info, verde se modelli compatibili)
+  - ComboBox modelli compatibili con DisplayName e FormattedSize
+  - Descrizione modello selezionato
+  - Panel "Nessun modello compatibile" con messaggio e suggerimento Sfoglia
+  - ProgressBar download con percentuale e MB scaricati
+  - Pulsanti Scarica (verde) e Annulla download
+  - Altezza dialog aumentata a 780px
+- Aggiornato AgentSettingsDialog.xaml.cs con:
+  - InitializeDownloadSection(): rileva RAM e popola ComboBox
+  - OnModelSelectionChanged(): mostra descrizione e abilita Scarica
+  - DownloadModel_Click(): conferma, avvia download con progress, imposta percorso
+  - CancelDownload_Click(): cancella download in corso
+  - SetDownloadingState(): gestisce UI durante download
+  - OnDialogClosing(): chiede conferma se download in corso
+- Aggiornato App.xaml.cs con:
+  - Named HttpClient "llm-download" con timeout 30 min
+  - ISystemSpecsService -> SystemSpecsService (Singleton)
+  - ILocalLlmDownloadService -> LocalLlmDownloadService (Singleton)
+
+### File creati/modificati:
+- src/TobaccoManagement.Infrastructure/Services/ISystemSpecsService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/SystemSpecsService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/ILocalLlmDownloadService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/LocalLlmDownloadService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/TobaccoManagement.Infrastructure.csproj (modificato - System.Management)
+- src/TobaccoManagement.Desktop/Views/Dialogs/AgentSettingsDialog.xaml (modificato)
+- src/TobaccoManagement.Desktop/Views/Dialogs/AgentSettingsDialog.xaml.cs (modificato)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - DI registration)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-043: Documentazione: Visualizzatore Markdown in-app
+
+---
+
+## 2026-03-07 - US-041: UI Desktop: Opzione Modello locale (GGUF) nel dialog impostazioni assistente
+
+### Implementato:
+- Aggiornato AgentSettingsDialog.xaml con:
+  - Terzo RadioButton (LocalGGUFRadio) 'Modello locale (GGUF)' con badge blu 'Offline / Nessuna API'
+  - Pannello LocalGGUFPanel con TextBox per percorso file .gguf e pulsante 'Sfoglia...'
+  - Testo di aiuto con suggerimento percorso predefinito (%LocalAppData%\GestionaleTabacchi\models\llm\)
+  - Indicatore visivo di validità file (verde se valido, rosso se non trovato, giallo se estensione non corretta)
+  - Altezza finestra aumentata da 580 a 680px per accomodare i nuovi controlli
+- Aggiornato AgentSettingsDialog.xaml.cs con:
+  - OnDialogLoaded: gestisce caricamento Provider == LocalGGUF e popola LocalModelPathTextBox
+  - UpdateProviderPanels: mostra/nasconde LocalGGUFPanel in base a LocalGGUFRadio.IsChecked
+  - UpdateSaveButtonState: per LocalGGUF abilita Salva se percorso non vuoto
+  - BrowseModel_Click: apre OpenFileDialog con filtro *.gguf e directory iniziale consigliata
+  - ValidateLocalModelPath: fornisce feedback visivo sulla validità del file (esiste, estensione corretta)
+  - TestButton_Click: chiama _kernelService.TestConnectionAsync(AgentProvider.LocalGGUF, pathModello, ct)
+  - SaveButton_Click: salva Provider = LocalGGUF e LocalModelPath = valore campo percorso
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/Views/Dialogs/AgentSettingsDialog.xaml (modificato)
+- src/TobaccoManagement.Desktop/Views/Dialogs/AgentSettingsDialog.xaml.cs (modificato)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-042: Download modello GGUF consigliato con filtro in base al PC
+
+---
+
+## 2026-03-07 - Automazione Ralph e Integrazione Documentazione
+
+### Implementato:
+- Aggiornato `prd.json` con US-043 (Visualizzatore Markdown) e US-044 (RAG Documentale).
+- Modificato `ralph.ps1` e `ralph-once.ps1` per integrare `bigplan.md` nel loop di aggiornamento automatico.
+- Aggiunta FASE 16 a `bigplan.md` per tracciare il progresso del nuovo modulo documentazione.
+- Stabilito protocollo di aggiornamento automatico dei file di tracking (`prd.json`, `progress.txt`, `bigplan.md`) ad ogni iterazione.
+
+### File creati/modificati:
+- ralph/prd.json
+- ralph/bigplan.md
+- ralph/progress.txt
+- ralph/ralph.ps1
+- ralph/ralph-once.ps1
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- Implementare US-043: Visualizzatore Markdown in-app con Markdig.Wpf.
+
+---
+
+## 2026-02-25 - US-019: AdE Autenticazione Fisconline a 6 step
+
+### Implementato:
+- Creata interfaccia IAdEFattureService.cs in Infrastructure/Services
+- Creato AdEFattureService.cs con implementazione completa del flusso di autenticazione a 6 step:
+  - Step 1: GET /portale/home - Estrazione p_auth (CSRF token Liferay) tramite regex
+  - Step 2: POST login sul portlet p_p_id=58 con credenziali CF/password/PIN
+  - Step 3: POST scelta utenza lavoro (delegaDirettaAction) in due fasi (solo CF, poi CF+PIVA)
+  - Step 4: GET verifica adesione al servizio
+  - Step 5: GET token B2BCookie con estrazione x-b2bcookie e x-token da headers/cookies/body JSON
+  - Step 6: GET accettazione disclaimer con headers x-b2bcookie e x-token
+- Gestione sessione con:
+  - IsSessionActive property con timeout 10 minuti
+  - InvalidateSession() per reset manuale
+  - Memorizzazione token B2B e CookieContainer per chiamate successive
+- Configurato named HttpClient "ade" in App.xaml.cs con headers browser simulati:
+  - User-Agent Chrome
+  - Accept-Language it-IT
+  - Sec-Fetch-Site same-origin
+  - DNT 1
+- Implementato pattern retry con Polly (3 tentativi, backoff esponenziale 2s/4s/8s)
+- Registrato servizio in DI come Transient
+
+### File creati/modificati:
+- src/TobaccoManagement.Infrastructure/Services/IAdEFattureService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/AdEFattureService.cs (nuovo)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - DI registration)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-020: Implementare GetFattureRicevuteAsync e GetFattureEmesseAsync per download lista fatture
+- I metodi interni GetB2BTokens(), GetSessionHttpClient(), TouchSession() sono esposti come internal per uso nelle future chiamate API
+
+---
+
+## 2026-02-25 - US-020: AdE Download lista fatture ricevute ed emesse
+
+### Implementato:
+- Creato record AdEFatturaInfo.cs in Infrastructure/Services con campi:
+  - IdentificativoSdI (long)
+  - NomeFile (string)
+  - DataRicezione (DateOnly?)
+  - Stato (string)
+  - TipoDocumento (string)
+- Aggiunta interfaccia IAdEFattureService con metodi:
+  - GetFattureRicevuteAsync(DateOnly dal, DateOnly al, IProgress<string>? progress, CancellationToken ct)
+  - GetFattureEmesseAsync(DateOnly dal, DateOnly al, IProgress<string>? progress, CancellationToken ct)
+- Implementato in AdEFattureService.cs:
+  - Endpoint URL con date formattate DDMMYYYY (/cons/cons-services/rs/fe/ricevute/dal/{dal}/al/{al}/ricerca/ricezione)
+  - Headers x-b2bcookie, x-token, Host e Referer aggiunti a ogni richiesta
+  - Verifica sessione attiva con lancio InvalidOperationException se scaduta
+  - Metodo interno GetFattureInternalAsync per logica condivisa tra ricevute/emesse
+  - Parsing JSON flessibile per gestire diverse strutture di risposta API (array diretto, oggetto con "fatture", "dati", "elenco")
+  - Clone di HttpRequestMessage per consentire retry con Polly
+  - Parsing date multi-formato (DDMMYYYY, DD/MM/YYYY, ISO)
+  - TouchSession() chiamato dopo ogni richiesta per aggiornare timeout sessione
+
+### File creati/modificati:
+- src/TobaccoManagement.Infrastructure/Services/AdEFatturaInfo.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/IAdEFattureService.cs (modificato)
+- src/TobaccoManagement.Infrastructure/Services/AdEFattureService.cs (modificato)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-021: Implementare DownloadFatturaAsync e DownloadAllFattureAsync per download fisico dei file XML/P7M
+- L'implementazione utilizza già i metodi interni esistenti (GetB2BTokens, GetSessionHttpClient, TouchSession) per la gestione della sessione
+
+---
+
+## 2026-02-25 - US-021: AdE Download fisico file fattura (XML e P7M) su disco
+
+### Implementato:
+- Creato enum AdETipoFile.cs in Infrastructure/Services con valori:
+  - FILE_FATTURA (file principale della fattura XML/P7M)
+  - FILE_METADATI (file metadati associato)
+  - FILE_NOTIFICA (ricevuta SDI)
+- Aggiunta interfaccia IAdEFattureService con metodi:
+  - DownloadFatturaAsync(long identificativoSdI, AdETipoFile tipoFile, string outputFolder, IProgress<string>? progress, CancellationToken ct)
+  - DownloadAllFattureAsync(List<AdEFatturaInfo> lista, AdETipoFile tipoFile, string outputFolder, IProgress<string>? progress, CancellationToken ct)
+- Implementato in AdEFattureService.cs:
+  - Endpoint download: /cons/cons-services/rs/fatture/file/{identificativoSdI}?tipoFile={tipoFile}&download=1&v={timestamp}
+  - Headers x-b2bcookie, x-token, Host e Referer aggiunti a ogni richiesta
+  - Verifica sessione attiva con lancio InvalidOperationException se scaduta
+  - Retry specifico per download: max 2 tentativi su errori HTTP 5xx con attesa 2 secondi
+  - Nessun retry su errori 4xx (errori client)
+  - Estrazione nome file da Content-Disposition header o generazione automatica da identificativoSdI
+  - File salvato nella cartella outputFolder, sovrascrittura se già esistente
+  - DownloadAllFattureAsync per download massivo sequenziale con progress report 'Downloading {nomeFile} ({i}/{total})...'
+  - Gestione errori graceful: singoli download falliti non bloccano il batch intero
+
+### File creati/modificati:
+- src/TobaccoManagement.Infrastructure/Services/AdETipoFile.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/IAdEFattureService.cs (modificato)
+- src/TobaccoManagement.Infrastructure/Services/AdEFattureService.cs (modificato)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-022: Implementare FatturaPaParserService per parsing fattura XML e decifratura P7M con estrazione dati
+- Utilizzo di System.Security.Cryptography.Pkcs.SignedCms per estrarre contenuto XML da file P7M firmati
+- Parsing XML con XDocument sui namespace FatturaPA (v1.2 e v1.3)
+
+---
+
+## 2026-02-25 - US-022: AdE Parsing fattura XML e decifratura P7M con estrazione dati
+
+### Implementato:
+- Creata interfaccia IFatturaPaParserService.cs in Infrastructure/Services con metodi:
+  - ParseFileAsync(string filePath, CancellationToken ct) - parsing singolo file
+  - ParseFolderAsync(string folderPath, IProgress<string>? progress, CancellationToken ct) - parsing massivo cartella
+- Creati DTOs in FatturaElettronicaDto.cs:
+  - FatturaElettronicaDto: CedentePrestatore, CessionarioCommittente, NumeroFattura, DataFattura, TotaleDocumento, Valuta, TipoDocumento, Righe, SourceFilePath
+  - SoggettoFatturaDto: Denominazione, CodiceFiscale, PartitaIVA
+  - RigaFatturaDto: NumeroLinea, Descrizione, Quantita, UnitaMisura, PrezzoUnitario, PrezzoTotale, AliquotaIVA, CodiciArticolo
+  - CodiceArticoloDto: TipoCodice, ValoreCodice
+- Implementato FatturaPaParserService.cs con:
+  - Auto-detect tipo file da estensione (.xml / .p7m)
+  - Decifratura P7M con System.Security.Cryptography.Pkcs.SignedCms (estrazione ContentInfo.Content)
+  - Supporto encoding UTF-8 e fallback ISO-8859-1 per contenuto XML
+  - Gestione file P7M in formato Base64 e PEM
+  - Parsing XML con XDocument sui namespace FatturaPA v1.2 e v1.2.2
+  - Auto-detect namespace dal documento XML
+  - Estrazione completa dati anagrafici (Denominazione o Nome+Cognome per persone fisiche)
+  - Estrazione righe con codici articolo multipli
+  - Calcolo TotaleDocumento da DatiRiepilogo se non specificato esplicitamente
+  - ParseFolderAsync con gestione errori graceful (singoli file falliti non bloccano il batch)
+- Aggiunto package System.Security.Cryptography.Pkcs v8.0.0 al progetto Infrastructure
+- Registrato servizio in DI come Transient in App.xaml.cs
+
+### File creati/modificati:
+- src/TobaccoManagement.Infrastructure/Services/IFatturaPaParserService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/FatturaElettronicaDto.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/FatturaPaParserService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/TobaccoManagement.Infrastructure.csproj (modificato - aggiunto package Pkcs)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - DI registration)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-023: Implementare AdEImportService per importazione righe fattura come movimenti di carico in magazzino
+- Ricerca prodotto per corrispondenza barcode/descrizione
+- Creazione movimenti LoadMovement con note fattura
+- Gestione duplicati con DuplicateImportException
+
+---
+
+## 2026-02-25 - US-023: AdE Importazione righe fattura come movimenti di carico in magazzino
+
+### Implementato:
+- Creata interfaccia IAdEImportService.cs in Application/Services con metodo:
+  - ImportFatturaAsync(FatturaElettronicaDto fattura, CancellationToken ct) - importa righe fattura come movimenti di carico
+- Creato AdEImportResult con proprietà:
+  - RigheImportate (int) - numero righe importate con successo
+  - RigheNonAbbinate (int) - numero righe non abbinate a prodotti
+  - ProdottiNonAbbinati (List<string>) - descrizioni/codici dei prodotti non abbinati
+  - Success (bool) - true se almeno una riga importata
+  - NumeroFattura, DataFattura, Fornitore - dati fattura per riferimento
+  - Errori (List<string>) - eventuali errori durante l'importazione
+  - Summary - riepilogo testuale dell'importazione
+- Creato DuplicateImportException per gestire fatture già importate:
+  - Lanciata quando NumeroFattura + CedentePrestatore.PIVA già esistono
+  - Proprietà NumeroFattura e PartitaIVAFornitore per identificare il duplicato
+- Implementato AdEImportService.cs con:
+  - Verifica duplicati tramite DocumentReference (formato: ADE-{NumeroFattura}-{PIVA})
+  - Ricerca prodotto per codice articolo: barcode/EAN, codice AAMS
+  - Ricerca prodotto per descrizione esatta (case-insensitive, trim)
+  - Creazione movimenti StockMovement di tipo Carico con reason ConsegnaFornitore
+  - SourceDocumentType.AdEFattura per tracciare origine movimento
+  - Note movimento: "Importato da AdE - Fattura {NumeroFattura}"
+  - Calcolo quantità kg con supporto unità di misura (KG, G, stecche)
+  - Aggiornamento giacenza prodotto dopo ogni movimento
+  - Gestione errori graceful: righe non abbinate non bloccano l'import
+  - Audit log per tracciare importazione completata
+- Aggiunto SourceDocumentType.AdEFattura (valore 5) all'enum in Domain/Enums
+- Registrato servizio in DI come Scoped in App.xaml.cs
+
+### File creati/modificati:
+- src/TobaccoManagement.Application/Services/IAdEImportService.cs (nuovo)
+- src/TobaccoManagement.Application/Services/AdEImportService.cs (nuovo)
+- src/TobaccoManagement.Domain/Enums/SourceDocumentType.cs (modificato - aggiunto AdEFattura)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - DI registration)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-024: Implementare UI per configurazione credenziali AdE Fisconline
+- Dialog con campi CF, password, PIN, P.IVA
+- Salvataggio sicuro con DPAPI
+- Test connessione con feedback visivo
+
+---
+
+## 2026-02-28 - US-024: UI Desktop: Dialog configurazione credenziali AdE Fisconline
+
+### Implementato:
+- Creata interfaccia IAdESettingsService.cs in Application/Services con metodi:
+  - LoadCredentialsAsync() - carica credenziali decifrate
+  - SaveCredentialsAsync(AdECredentials) - salva credenziali cifrate con DPAPI
+  - HasCredentials() - verifica esistenza credenziali
+  - DeleteCredentialsAsync() - elimina credenziali salvate
+- Creato AdECredentials record in IAdESettingsService.cs con campi:
+  - CodiceFiscale (string)
+  - Password (string)
+  - Pin (string)
+  - PartitaIVA (string)
+  - IsValid property per validazione
+- Creato AdESettingsService.cs in Application/Services con:
+  - Cifratura DPAPI con DataProtectionScope.CurrentUser
+  - Salvataggio in AppData/Local/GestionaleTabacchi/ade_credentials.dat
+  - Serializzazione JSON delle credenziali prima della cifratura
+- Creato AdECredentialsDialog.xaml in Views/Dialogs con:
+  - Header con icona e descrizione
+  - TextBox CodiceFiscale (CharacterCasing=Upper, MaxLength=16)
+  - PasswordBox Password
+  - PasswordBox PIN (MaxLength=10)
+  - TextBox PartitaIVA (MaxLength=11)
+  - StatusBorder per messaggi successo (verde) / errore (rosso)
+  - Pulsante Test Connessione (verde, esegue LoginAsync)
+  - Pulsante Salva (arancione, abilitato solo quando tutti i campi compilati)
+  - Pulsante Annulla (scuro)
+  - ProgressBar per indicare operazioni in corso
+- Creato AdECredentialsDialog.xaml.cs con:
+  - Iniezione IAdESettingsService e IAdEFattureService via DI
+  - Caricamento credenziali esistenti all'apertura
+  - Validazione campi (CF 16 chars, P.IVA 11 chars)
+  - Test connessione con LoginAsync e feedback visivo
+  - Salvataggio credenziali e chiusura con DialogResult=true
+- Aggiunto gruppo "FATTURE ADE" nella sidebar MainWindow.xaml con:
+  - Voce menu "Impostazioni" con icona ingranaggio
+  - Command binding a OpenAdESettingsCommand
+- Aggiunto OpenAdESettingsCommand in MainViewModel.cs:
+  - Apre AdECredentialsDialog con Owner=MainWindow
+  - Mostra toast di conferma al salvataggio
+- Registrato servizi in App.xaml.cs:
+  - IAdESettingsService -> AdESettingsService (Scoped)
+  - AdECredentialsDialog (Transient)
+
+### File creati/modificati:
+- src/TobaccoManagement.Application/Services/IAdESettingsService.cs (nuovo)
+- src/TobaccoManagement.Application/Services/AdESettingsService.cs (nuovo)
+- src/TobaccoManagement.Desktop/Views/Dialogs/AdECredentialsDialog.xaml (nuovo)
+- src/TobaccoManagement.Desktop/Views/Dialogs/AdECredentialsDialog.xaml.cs (nuovo)
+- src/TobaccoManagement.Desktop/Views/MainWindow.xaml (modificato - aggiunto menu Fatture AdE)
+- src/TobaccoManagement.Desktop/ViewModels/MainViewModel.cs (modificato - aggiunto OpenAdESettingsCommand)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - DI registration)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-025: Implementare pannello scaricamento e importazione fatture AdE
+- AdEFattureViewModel e AdEFattureView con DatePicker dal/al
+- Pipeline completa: Login → GetFatture → DownloadAll → ParseAll → ImportAll
+- DataGrid con stato importazione per ogni fattura
+
+---
+
+## 2026-02-28 - US-025: UI Desktop: Pannello scaricamento e importazione fatture AdE
+
+### Implementato:
+- Creato AdEFattureViewModel.cs in ViewModels con:
+  - Proprietà DataDal/DataAl (default: primo e ultimo giorno mese corrente)
+  - Enum TipoFatturaFilter (Ricevute, Emesse, Entrambe) per ComboBox
+  - Enum StatoImportazione (NonScaricata, Scaricata, Importata, Parziale, NonAbbinata, Duplicata, Errore)
+  - AdEFatturaItemViewModel per ogni fattura nella DataGrid
+  - ObservableCollection<AdEFatturaItemViewModel> Fatture
+  - Statistiche: TotalFatture, FattureImportate, RigheImportate, RigheNonAbbinate
+  - ObservableCollection<string> LogMessages per log operazioni
+  - HasCredentials property per verificare configurazione
+- Implementato ScaricaEImportaAsync con pipeline completa:
+  - Step 1: Carica credenziali da IAdESettingsService
+  - Step 2: Login al portale AdE con progress reporting
+  - Step 3: GetFatture (ricevute e/o emesse in base a TipoFattura)
+  - Step 4: DownloadAll in cartella temporanea
+  - Step 5: ParseFolder per parsing XML/P7M
+  - Step 6: ImportAll con gestione DuplicateImportException
+  - Aggiornamento statistiche e stato per ogni fattura
+- Implementato ImportaSelezionateAsync per reimportare fatture Parziale/NonAbbinata
+- Implementato AnnullaCommand con CancellationTokenSource
+- Creato AdEFattureView.xaml in Views con:
+  - Header con titolo e pulsante Impostazioni
+  - Warning inline se credenziali non configurate
+  - Filtri: DatePicker DataDal/DataAl, ComboBox TipoFattura
+  - Pulsanti: Reset, Annulla (visibile durante operazioni), Scarica e Importa
+  - Statistics Cards: Totale Fatture, Importate, Righe Caricate, Non Abbinate
+  - DataGrid con colonne: checkbox, Data, Numero, Fornitore, Totale, Stato (badge colorato)
+  - Panel Log Operazioni con ListBox scrollabile e pulsante Pulisci
+  - Pulsante Reimporta Selezionate
+  - Status Bar con StatusMessage
+  - Loading Overlay con spinner animato, ProgressMessage e pulsante Annulla
+- Creato AdEFattureView.xaml.cs con OnLoaded per RefreshCredentialsStatus
+- Creato StatoImportazioneToColorConverter.cs per colori badge stato
+- Creato ZeroToVisibilityConverter.cs per empty state DataGrid
+- Aggiunto voce 'Scarica Fatture' nel gruppo FATTURE ADE sidebar MainWindow:
+  - Icona 📥, evidenziazione arancione quando sezione attiva
+  - Command ShowAdEFattureCommand
+- Aggiunto ShowAdEFattureCommand in MainViewModel.cs
+- Aggiunto _adeFattureViewModel field e parametro costruttore in MainViewModel
+- Registrato AdEFattureViewModel in App.xaml.cs come Transient
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/ViewModels/AdEFattureViewModel.cs (nuovo)
+- src/TobaccoManagement.Desktop/Views/AdEFattureView.xaml (nuovo)
+- src/TobaccoManagement.Desktop/Views/AdEFattureView.xaml.cs (nuovo)
+- src/TobaccoManagement.Desktop/Converters/StatoImportazioneToColorConverter.cs (nuovo)
+- src/TobaccoManagement.Desktop/Converters/ZeroToVisibilityConverter.cs (nuovo)
+- src/TobaccoManagement.Desktop/Views/MainWindow.xaml (modificato - aggiunto voce Scarica Fatture)
+- src/TobaccoManagement.Desktop/ViewModels/MainViewModel.cs (modificato - aggiunto ShowAdEFattureCommand e AdEFattureViewModel)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - registrazione AdEFattureViewModel)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- Tutte le user stories della branch 1.1.7 sono completate
+- Integrazione AdE Fatture e Corrispettivi completa:
+  - US-019: Autenticazione Fisconline a 6 step
+  - US-020: Download lista fatture
+  - US-021: Download fisico file XML/P7M
+  - US-022: Parsing e decifratura P7M
+  - US-023: Importazione come movimenti magazzino
+  - US-024: Dialog configurazione credenziali
+  - US-025: Pannello scaricamento e importazione
+
+---
+
+## 2026-03-03 - US-026: IA: Service layer multi-provider (Groq e Claude Haiku)
+
+### Implementato:
+- Creata interfaccia IAgentService in Infrastructure/Services con metodo:
+  - SendMessageAsync(string userMessage, AgentContext context, CancellationToken ct)
+- Creato record AgentContext in Infrastructure/Services con campi:
+  - ShopName (string)
+  - ProdottiSottoscortaCount (int)
+  - ProdottiSottoscortaNomi (List<string>, top 5)
+  - VenditeOggiTotale (decimal)
+  - OrdiniPendentiCount (int)
+  - DataOra (DateTime)
+- Creato enum AgentProvider in Infrastructure/Services:
+  - Groq = 0 (API gratuita)
+  - ClaudeHaiku = 1 (API a pagamento)
+- Creato GroqAgentService in Infrastructure/Services:
+  - POST https://api.groq.com/openai/v1/chat/completions
+  - Header Authorization: Bearer {apiKey}
+  - Body con model 'llama-3.3-70b-versatile', max_tokens 512
+  - Gestione errori HTTP con messaggi leggibili in italiano
+- Creato ClaudeHaikuAgentService in Infrastructure/Services:
+  - POST https://api.anthropic.com/v1/messages
+  - Headers x-api-key e anthropic-version: 2023-06-01
+  - Body con model 'claude-haiku-4-5-20251001', max_tokens 512
+  - Gestione errori HTTP con messaggi leggibili in italiano
+- System prompt identico per entrambi i provider (italiano, conciso, context-aware)
+- Creato AgentServiceFactory in Infrastructure/Services:
+  - CreateAgentServiceAsync() legge settings e restituisce il provider corretto
+  - CreateAgentServiceForTest() per test connessione con credenziali temporanee
+- Creato AgentNotConfiguredException per API key mancanti/vuote
+- Creato AgentApiException con classificazione errori (Timeout, Unauthorized, RateLimited, ServerError, ConnectionError)
+- Creato IAgentSettingsService e AgentSettingsService (anticipato da US-027):
+  - LoadSettingsAsync(), SaveSettingsAsync(), HasValidConfiguration()
+  - Cifratura DPAPI con DataProtectionScope.CurrentUser
+  - File salvato in AppData\Local\GestionaleTabacchi\agent_settings.dat
+- Named HttpClient "agent" con timeout 2 minuti
+- Registrazione DI in App.xaml.cs:
+  - IAgentSettingsService -> AgentSettingsService (Singleton)
+  - GroqAgentService (Transient)
+  - ClaudeHaikuAgentService (Transient)
+  - AgentServiceFactory (Singleton)
+
+### File creati/modificati:
+- src/TobaccoManagement.Infrastructure/Services/IAgentService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/IAgentSettingsService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/AgentSettingsService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/GroqAgentService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/ClaudeHaikuAgentService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/AgentServiceFactory.cs (nuovo)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - DI registration)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-027 già parzialmente implementata (IAgentSettingsService e AgentSettingsService)
+- Prossimo: US-028 (AgentViewModel con chat MVVM e context builder)
+
+---
+
+## 2026-03-03 - US-027: IA: Settings service con DPAPI per API key cifrate
+
+### Verifica completamento:
+US-027 era già stata completamente implementata come parte di US-026 (anticipata per permettere al factory di funzionare).
+
+### Acceptance Criteria verificati:
+- ✅ IAgentSettingsService in Infrastructure/Services con metodi:
+  - Task<AgentSettings> LoadSettingsAsync()
+  - Task SaveSettingsAsync(AgentSettings settings)
+  - bool HasValidConfiguration()
+- ✅ AgentSettings record con proprietà:
+  - AgentProvider Provider
+  - string GroqApiKey
+  - string AnthropicApiKey
+  - bool IsEnabled
+- ✅ AgentSettingsService in Infrastructure/Services:
+  - Cifratura/decifratura con ProtectedData.Protect/Unprotect (DataProtectionScope.CurrentUser)
+  - File salvato in AppData\Local\GestionaleTabacchi\agent_settings.dat
+- ✅ HasValidConfiguration() ritorna true se:
+  - IsEnabled && Provider == Groq && GroqApiKey non vuota, oppure
+  - IsEnabled && Provider == ClaudeHaiku && AnthropicApiKey non vuota
+- ✅ Se il file non esiste: LoadSettingsAsync() ritorna AgentSettings con IsEnabled=false senza eccezioni
+- ✅ Registrato in DI come Singleton (App.xaml.cs linea 148)
+- ✅ Build passa senza errori (0 errori, 0 warning)
+
+### File già esistenti (creati in US-026):
+- src/TobaccoManagement.Infrastructure/Services/IAgentSettingsService.cs
+- src/TobaccoManagement.Infrastructure/Services/AgentSettingsService.cs
+- src/TobaccoManagement.Desktop/App.xaml.cs (registrazione DI)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-028: Implementare AgentViewModel con chat MVVM e context builder
+- Creare ChatMessageViewModel, SendCommand, BuildContextAsync()
+- Integrazione con IReportingService, ITobaccoProductRepository, ILogistaOrderRepository, IShopProfileRepository
+
+---
+
+## 2026-03-03 - US-028: IA: AgentViewModel con chat MVVM e context builder
+
+### Implementato:
+- Creato ChatMessageViewModel.cs in ViewModels con proprietà:
+  - string Content
+  - bool IsUserMessage
+  - DateTime Timestamp
+- Creato AgentViewModel.cs in ViewModels con:
+  - ObservableCollection<ChatMessageViewModel> Messages
+  - string CurrentInput (input corrente utente)
+  - bool IsLoading (stato caricamento)
+  - bool IsConfigured (stato configurazione)
+  - IAsyncRelayCommand SendCommand con [RelayCommand] e CanExecute
+- Implementato SendCommand che:
+  - Aggiunge messaggio utente a Messages
+  - Imposta IsLoading=true
+  - Chiama BuildContextAsync() per costruire il contesto
+  - Chiama AgentServiceFactory.CreateAgentServiceAsync() per ottenere il provider corretto
+  - Chiama IAgentService.SendMessageAsync() con messaggio e contesto
+  - Aggiunge risposta IA a Messages
+  - Imposta IsLoading=false nel finally
+- Implementato BuildContextAsync() che interroga:
+  - IShopProfileRepository.GetActiveProfileAsync() per ShopName
+  - IReportingService.GenerateSalesReportAsync() per VenditeOggiTotale
+  - ITobaccoProductRepository.GetAllActiveAsync() + filtro Giacenza < ScortaMinima per ProdottiSottoscortaCount e top 5 nomi
+  - ILogistaOrderRepository.GetAllAsync() + filtro Status == Confirmed || InTransit per OrdiniPendentiCount
+- Gestione eccezioni:
+  - AgentNotConfiguredException: imposta IsConfigured=false (nessun messaggio di errore, UI mostra banner)
+  - AgentApiException: aggiunge messaggio di errore leggibile in italiano in chat
+  - GetFriendlyErrorMessage() per tradurre AgentApiErrorType in messaggi user-friendly
+- Metodo RefreshConfigurationStatus() per aggiornare IsConfigured chiamando HasValidConfiguration()
+- Partial methods OnCurrentInputChanged, OnIsLoadingChanged, OnIsConfiguredChanged per NotifyCanExecuteChanged
+- Registrato AgentViewModel in DI come Transient in App.xaml.cs
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/ViewModels/ChatMessageViewModel.cs (nuovo)
+- src/TobaccoManagement.Desktop/ViewModels/AgentViewModel.cs (nuovo)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - DI registration)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-029: Implementare AgentView.xaml come UserControl per il pannello chat nel Dashboard
+- Layout con header, ScrollViewer per messaggi, TextBox + Button per input
+- Banner configurazione quando IsConfigured=false
+- Auto-scroll al fondo ad ogni nuovo messaggio
+- Modificare DashboardView.xaml per aggiungere colonna destra con AgentView
+
+---
+
+## 2026-03-03 - US-029: UI Desktop: AgentView pannello chat nel Dashboard
+
+### Implementato:
+- Creato AgentView.xaml come UserControl in Views/ con:
+  - Layout verticale completo: header, area messaggi, spinner caricamento, input area
+  - Header con sfondo PrimaryBaseBrush blu e titolo "Assistente IA"
+  - Banner giallo "Assistente IA non configurato." quando IsConfigured=false con pulsante "Configura"
+  - ScrollViewer con ItemsControl per lista messaggi
+  - DataTemplate ChatMessageTemplate con:
+    - Messaggi utente: bubble destra, sfondo AccentBaseBrush (arancione), testo bianco, CornerRadius 12,12,2,12
+    - Messaggi IA: bubble sinistra, sfondo bianco con bordo, testo scuro, CornerRadius 12,12,12,2
+    - Timestamp HH:mm sotto ogni messaggio
+  - Spinner animato con tre Ellipse pulsanti quando IsLoading=true
+  - TextBox input con placeholder "Scrivi una domanda sul tuo negozio..."
+  - Template custom per TextBox con CornerRadius, focus border accent, stato disabilitato
+  - Button "Invia" con sfondo accent, effetto hover, stato disabilitato
+  - Empty state con icona "AI" e testo invito quando nessun messaggio
+- Creato AgentView.xaml.cs con:
+  - OnLoaded: chiama RefreshConfigurationStatus() e sottoscrive Messages.CollectionChanged
+  - OnMessagesCollectionChanged: auto-scroll al fondo del ScrollViewer via Dispatcher.BeginInvoke
+  - OnConfigureClick: placeholder per apertura AgentSettingsDialog (US-030)
+  - OnInputKeyDown: invio messaggio con Enter (senza Shift)
+  - GetServiceProvider: accesso al service provider tramite reflection su App._host
+- Modificato DashboardView.xaml:
+  - Aggiunto namespace xmlns:views per Views
+  - Wrappato contenuto esistente in Grid con due ColumnDefinitions
+  - Colonna sinistra (*) per contenuto dashboard principale in ScrollViewer
+  - Colonna destra (320px) per AgentView con DataContext="{Binding AgentVm}"
+- Modificato DashboardViewModel.cs:
+  - Aggiunta proprietà pubblica AgentVm { get; } di tipo AgentViewModel
+  - Aggiunto parametro AgentViewModel agentViewModel nel costruttore
+  - Assegnazione AgentVm = agentViewModel nel costruttore
+- Build passa con 0 errori (63 warnings pre-esistenti)
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/Views/AgentView.xaml (nuovo)
+- src/TobaccoManagement.Desktop/Views/AgentView.xaml.cs (nuovo)
+- src/TobaccoManagement.Desktop/Views/DashboardView.xaml (modificato - layout due colonne)
+- src/TobaccoManagement.Desktop/ViewModels/DashboardViewModel.cs (modificato - AgentVm property)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-030: Implementare AgentSettingsDialog.xaml per configurazione provider e API key
+- RadioButton per selezione Groq/Claude Haiku
+- PasswordBox per API key con toggle Show/Hide
+- Button Test Connessione con spinner e feedback
+- Aggiungere voce menu "Assistente IA > Impostazioni" nella sidebar
+
+---
+
+## 2026-03-03 - US-030: UI Desktop: Dialog configurazione provider e API key
+
+### Implementato:
+- Creato AgentSettingsDialog.xaml in Views/Dialogs con:
+  - Header con icona robot e titolo "Assistente IA"
+  - CheckBox "Abilita assistente IA" per abilitare/disabilitare l'assistente
+  - RadioButton "Groq" con badge verde "Gratuito" per selezione provider
+  - RadioButton "Claude Haiku" con badge arancione "A pagamento" per selezione provider
+  - Pannello GroqPanel (visibile solo quando Groq selezionato):
+    - PasswordBox per API key con pulsante toggle Show/Hide
+    - TextBlock link "Ottieni la tua API key gratuita su console.groq.com" cliccabile
+  - Pannello ClaudePanel (visibile solo quando Claude Haiku selezionato):
+    - PasswordBox per API key con pulsante toggle Show/Hide
+    - TextBlock link "Ottieni su console.anthropic.com" cliccabile
+  - StatusBorder per mostrare messaggi di successo (verde) o errore (rosso)
+  - Button "TEST CONNESSIONE" (verde) per testare la connessione al provider
+  - Button "SALVA" (arancione) abilitato solo se:
+    - CheckBox disabilitato, oppure
+    - API key del provider selezionato non vuota
+  - Button "ANNULLA" (scuro) per chiudere senza salvare
+  - ProgressBar per indicare operazioni in corso
+- Creato AgentSettingsDialog.xaml.cs con:
+  - OnDialogLoaded: carica impostazioni esistenti da IAgentSettingsService
+  - OnEnabledChanged: aggiorna stato pulsante Salva
+  - OnProviderChanged: aggiorna visibilita' pannelli API key
+  - GroqShowHide_Click/ClaudeShowHide_Click: toggle Show/Hide per API key
+  - OpenGroqConsole_Click/OpenAnthropicConsole_Click: apre console nel browser
+  - TestButton_Click: crea servizio di test via AgentServiceFactory.CreateAgentServiceForTest()
+    - Invia messaggio "Rispondi solo con OK." con AgentContext vuoto
+    - Mostra "Connessione riuscita!" in verde o errore in rosso
+    - Gestione specifica per AgentApiErrorType (Unauthorized, RateLimited, ServerError, Timeout, ConnectionError)
+  - SaveButton_Click: salva impostazioni via IAgentSettingsService.SaveSettingsAsync()
+    - Chiama AgentViewModel.RefreshConfigurationStatus() dopo il salvataggio
+    - Chiude con DialogResult=true
+  - SetLoadingState: abilita/disabilita controlli durante operazioni
+- Aggiunto gruppo "ASSISTENTE IA" nella sidebar MainWindow.xaml:
+  - TextBlock header e Separator
+  - Button "Impostazioni" con icona robot che esegue OpenAgentSettingsCommand
+- Aggiunto OpenAgentSettingsCommand in MainViewModel.cs:
+  - Apre AgentSettingsDialog con Owner=MainWindow
+  - Mostra toast di conferma al salvataggio
+- Registrato AgentSettingsDialog in App.xaml.cs come Transient
+- Aggiornato AgentView.xaml.cs:
+  - OnConfigureClick ora apre il dialog reale AgentSettingsDialog invece del placeholder MessageBox
+  - Chiama RefreshConfigurationStatus() dopo la chiusura del dialog
+- Build passa con 0 errori
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/Views/Dialogs/AgentSettingsDialog.xaml (nuovo)
+- src/TobaccoManagement.Desktop/Views/Dialogs/AgentSettingsDialog.xaml.cs (nuovo)
+- src/TobaccoManagement.Desktop/Views/MainWindow.xaml (modificato - aggiunto gruppo ASSISTENTE IA)
+- src/TobaccoManagement.Desktop/ViewModels/MainViewModel.cs (modificato - aggiunto OpenAgentSettingsCommand)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - registrazione AgentSettingsDialog)
+- src/TobaccoManagement.Desktop/Views/AgentView.xaml.cs (modificato - apertura dialog reale)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-031: Implementare modernizzazione stile ScrollBar e DataGrid
+
+---
+
+## 2026-03-03 - US-031: UI Desktop: Modernizzazione stile ScrollBar e DataGrid
+
+### Implementato:
+- Creato ScrollBarStyles.xaml in Themes/Controls con:
+  - Colori dedicati: ScrollBarThumbColor (#C0C0C0), ScrollBarThumbHoverColor (#A0A0A0), ScrollBarThumbPressedColor (#808080), ScrollBarTrackColor (#F5F5F5)
+  - ModernScrollBarThumbVertical e ModernScrollBarThumbHorizontal: Thumb arrotondato con CornerRadius 4, MinHeight/MinWidth 20px
+  - Trigger per cambio colore su IsMouseOver e IsDragging (hover e pressed states)
+  - ModernScrollBarPageButton: RepeatButton invisibile per page up/down
+  - ModernScrollBarStyleVertical e ModernScrollBarStyleHorizontal: Template completo senza frecce direzionali
+  - Track con background trasparente che diventa grigio chiaro su hover
+  - ModernScrollBarStyle: stile unificato con trigger per orientamento
+  - ModernScrollViewerStyle: ScrollViewer con scrollbar moderne integrate
+- Aggiornato DataGridStyles.xaml con:
+  - DataGridNoFocusVisual: stile vuoto per rimuovere il bordo tratteggiato su focus
+  - ModernDataGridStyle: aggiunto FocusVisualStyle vuoto, Template custom con:
+    - Border esterno con CornerRadius 8 per design arrotondato
+    - ScrollViewer interno con Template custom
+    - ScrollBar moderne (ModernScrollBarStyleVertical/Horizontal) integrate
+  - ModernDataGridColumnHeaderStyle: migliorato con:
+    - Separatore sottile tra colonne (BorderBrush #3D566B)
+    - FocusVisualStyle vuoto per rimuovere focus border
+    - Icone di ordinamento moderne con chevron (Path con stroke 2px)
+    - SortArrowUp e SortArrowDown separati per direzione chiara
+    - DataGridColumnHeaderGripperStyle per resize colonne
+  - ModernDataGridRowStyle: aggiunto FocusVisualStyle vuoto
+  - ModernDataGridCellStyle: aggiunto FocusVisualStyle vuoto
+- Aggiornato AppTheme.xaml:
+  - Aggiunto ScrollBarStyles.xaml ai MergedDictionaries (prima di DataGridStyles per dipendenze)
+  - Sostituito stile ScrollBar semplice con BasedOn="{StaticResource ModernScrollBarStyle}"
+- Build passa con 0 errori
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/Themes/Controls/ScrollBarStyles.xaml (nuovo)
+- src/TobaccoManagement.Desktop/Themes/Controls/DataGridStyles.xaml (modificato)
+- src/TobaccoManagement.Desktop/Themes/AppTheme.xaml (modificato)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-032: Implementare funzionalità di agenda ordine/consegna e analisi storico ordini
+
+---
+
+## 2026-03-04 - US-032: Suggerimenti Ordine: agenda ordine/consegna e analisi storico ordini
+
+### Implementato:
+- Creato IOrderScheduleSettingsService in Infrastructure/Services con metodi:
+  - Task<OrderScheduleSettings> LoadAsync()
+  - Task SaveAsync(OrderScheduleSettings settings)
+- Creato OrderScheduleSettings class con proprietà:
+  - DayOfWeek OrderDayOfWeek (default Monday)
+  - DayOfWeek DeliveryDayOfWeek (default Wednesday)
+  - bool AutoDetectedFromHistory
+- Creato OrderScheduleSettingsService in Infrastructure/Services:
+  - Persistenza JSON in %LocalAppData%/GestionaleTabacchi/order_schedule_settings.json
+  - Cache con TTL 5 minuti per evitare letture ripetute
+  - Ritorna defaults senza eccezioni se file assente
+- Creato IOrderHistoryAnalysisService in Infrastructure/Services con metodi:
+  - Task<OrderScheduleDetectionResult> DetectOrderScheduleAsync(int minOrders = 5)
+  - Task<ProductOrderHistoryResult> GetProductOrderHistoryAsync(int productId, int lastNOrders = 10)
+- Creato OrderScheduleDetectionResult record:
+  - DayOfWeek? DetectedOrderDay (moda del DayOfWeek da ConfirmedAt)
+  - DayOfWeek? DetectedDeliveryDay (moda del DayOfWeek da ActualDeliveryDate)
+  - int? AverageLeadTimeDays (media (ActualDeliveryDate-ConfirmedAt).TotalDays)
+  - int SampleSize (tutti nullable se dati insufficienti)
+- Creato ProductOrderHistoryResult record:
+  - int ProductId
+  - decimal AverageQuantityOrdered (media QuantityInCartons)
+  - decimal LastQuantityOrdered
+  - int OrderCount
+  - DateTime? LastOrderDate
+- Creato OrderHistoryAnalysisService in Infrastructure/Services:
+  - DetectOrderScheduleAsync carica ordini con Status=Delivered e ActualDeliveryDate!=null
+  - Estrae moda del DayOfWeek per ordine e consegna
+  - Calcola lead time medio; ritorna nulls se SampleSize < minOrders
+  - GetProductOrderHistoryAsync query LogistaOrderItems filtrati per ProductId
+- Aggiornato OrderSuggestion model in Domain/Models con nuove proprietà:
+  - decimal? HistoricalAvgOrderedCartons
+  - decimal? LastOrderedCartons
+  - DateTime? LastOrderDate
+  - int? HistoricalOrderCount
+- Aggiornato OrderSuggestionService in Infrastructure/Services:
+  - Inietta IOrderHistoryAnalysisService e IOrderScheduleSettingsService
+  - Aggiunto metodo statico CalculateDaysUntilNextDelivery(DateTime, DayOfWeek, DayOfWeek)
+  - All'inizio di GenerateSuggestionsAsync carica settings e chiama DetectOrderScheduleAsync
+  - Usa effectiveLeadTimeDays da storico se disponibile, altrimenti calcola da programmazione
+  - DeterminePriority aggiornato con parametro int? daysUntilDelivery:
+    - CRITICO(5): daysOfStock < daysUntilDelivery
+    - URGENTE(4): daysOfStock < daysUntilDelivery+2 o sotto scorta minima
+    - ALTA(3): daysOfStock < daysUntilDelivery+7
+    - MEDIA(2): daysOfStock < daysUntilDelivery+14
+    - BASSA(1): altrimenti
+  - Per ogni prodotto chiama GetProductOrderHistoryAsync e popola campi storici
+- Registrazione DI in App.xaml.cs:
+  - IOrderScheduleSettingsService → OrderScheduleSettingsService (Singleton)
+  - IOrderHistoryAnalysisService → OrderHistoryAnalysisService (Scoped)
+- Build passa con 0 errori
+
+### File creati/modificati:
+- src/TobaccoManagement.Infrastructure/Services/IOrderScheduleSettingsService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/OrderScheduleSettingsService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/IOrderHistoryAnalysisService.cs (nuovo)
+- src/TobaccoManagement.Infrastructure/Services/OrderHistoryAnalysisService.cs (nuovo)
+- src/TobaccoManagement.Domain/Models/OrderSuggestion.cs (modificato)
+- src/TobaccoManagement.Infrastructure/Services/OrderSuggestionService.cs (modificato)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - DI registration)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-033: Implementare UI per configurazione agenda e visualizzazione dati storici su card prodotto
+- OrderSuggestionViewModel dovrà iniettare i nuovi servizi e esporre proprietà per giorni ordine/consegna
+- View XAML dovrà mostrare ComboBox per configurazione e label "Prossima consegna tra X gg"
+- Ogni card prodotto dovrà mostrare HistoricalOrderLabel sotto la riga "Ordina X stecche"
+
+---
+
+## 2026-03-04 - US-033: UI Suggerimenti Ordine: configurazione agenda e dati storici su card prodotto
+
+### Implementato:
+- Aggiornato OrderSuggestionViewModel.cs con:
+  - Iniezione di IOrderScheduleSettingsService e IOrderHistoryAnalysisService nel costruttore
+  - ObservableProperty OrderDayOfWeek (DayOfWeek, default Monday)
+  - ObservableProperty DeliveryDayOfWeek (DayOfWeek, default Wednesday)
+  - ObservableProperty ScheduleAutoDetected (bool) per mostrare banner informativo
+  - Proprietà calcolata NextDeliveryLabel es. "Prossima consegna: mercoledì (tra 3 gg)"
+  - Dizionario statico DayNamesItalian per traduzione giorni in italiano
+  - Lista statica DaysOfWeekItems per popolare ComboBox
+  - Metodo InitializeScheduleSettingsAsync(): se settings non esistono, chiama DetectOrderScheduleAsync(); se SampleSize >= 5 pre-popola giorni e imposta AutoDetectedFromHistory=true
+  - Metodo SaveScheduleSettingsAsync(): salva impostazioni e resetta AutoDetected
+  - RelayCommand ResetAutoDetectionAsync: permette reset della configurazione manuale
+  - Metodo UpdateNextDeliveryLabel(): calcola giorni fino alla prossima consegna
+  - Partial methods OnOrderDayOfWeekChanged e OnDeliveryDayOfWeekChanged per salvataggio automatico
+- Creato record DayOfWeekItem(DayOfWeek Value, string DisplayName) per ComboBox binding
+- Aggiornato OrderSuggestionItemViewModel con:
+  - Proprietà HistoricalAvgOrderedCartons, LastOrderedCartons, LastOrderDate, HistoricalOrderCount
+  - Proprietà bool HasOrderHistory (true se OrderCount > 0)
+  - Proprietà string HistoricalOrderLabel formattata:
+    - "Ultima volta: X stecche — dd/MM/yyyy" se HasOrderHistory
+    - "Mai ordinato" se non ci sono ordini
+- Aggiornato CreateLogistaOrderView.xaml con:
+  - Namespace xmlns:vm per ViewModels
+  - Sezione configurazione agenda nel pannello suggerimenti:
+    - Banner arancione "Giorni rilevati automaticamente" con pulsante reset (visibile se ScheduleAutoDetected)
+    - ComboBox "Giorno ordine" con giorni settimana in italiano
+    - ComboBox "Giorno consegna" con giorni settimana in italiano
+    - Label blu con NextDeliveryLabel (es. "Prossima consegna: mercoledì (tra 3 gg)")
+  - Su ogni card prodotto: riga aggiuntiva con HistoricalOrderLabel in grigio italico sotto "Ordina X stecche"
+- Aggiornato CreateLogistaOrderViewModel.LoadSuggestionsAsync():
+  - Chiama InitializeScheduleSettingsAsync() prima di caricare i suggerimenti
+- Build passa con 0 errori
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/ViewModels/OrderSuggestionViewModel.cs (modificato - schedule settings, DayOfWeekItem)
+- src/TobaccoManagement.Desktop/Views/CreateLogistaOrderView.xaml (modificato - sezione agenda, historical label)
+- src/TobaccoManagement.Desktop/ViewModels/CreateLogistaOrderViewModel.cs (modificato - InitializeScheduleSettingsAsync call)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-034: Implementare modernizzazione stile Controlli di Input e TabControl
+- Creare TabControlStyles.xaml con stile Material/Web
+- Aggiornare InputStyles.xaml per CheckBox, RadioButton, ComboBox con stile flat
+
+---
+
+## 2026-03-04 - US-034: UI Desktop: Modernizzazione stile Controlli di Input e TabControl
+
+### Implementato:
+- Creato TabControlStyles.xaml in Themes/Controls con:
+  - TabControlNoFocusVisual: stile vuoto per rimuovere il focus border
+  - ModernTabItemStyle: stile tab Material/Web con:
+    - Hover state con SurfaceHoverBrush background
+    - Selected state con AccentBaseBrush foreground, FontWeight SemiBold
+    - Indicatore bottom Border 3px con AccentBaseBrush e CornerRadius 1.5
+    - Cursor Hand e transizioni smooth
+  - ModernTabControlStyle: TabControl con header panel e content area
+    - Border bottom con BorderLightBrush per separazione
+    - ItemContainerStyle preset a ModernTabItemStyle
+  - ModernTabControlCardStyle: variante con content area card-style
+    - CornerRadius 0,0,8,8 per angoli arrotondati in basso
+    - Padding 16 e BorderThickness 1
+  - ModernVerticalTabControlStyle: TabControl con tab a sinistra
+    - Border right per separazione
+  - ModernVerticalTabItemStyle: TabItem per tab verticali
+    - Indicatore laterale sinistro con CornerRadius 0,1.5,1.5,0
+    - Background leggero #1AE67E22 quando selezionato
+- Aggiornato InputStyles.xaml con ControlTemplate completi:
+  - InputNoFocusVisual: stile vuoto per input controls
+  - ModernTextBoxStyle aggiornato con:
+    - OverridesDefaultStyle True
+    - ControlTemplate con Border CornerRadius 4
+    - CaretBrush e SelectionBrush personalizzati
+    - Trigger per hover (PrimaryLightBrush) e focus (AccentBaseBrush, BorderThickness 2)
+  - ModernPasswordBoxStyle aggiornato con:
+    - Stesso pattern di ModernTextBoxStyle
+    - CornerRadius 4 e focus states
+  - ModernCheckBoxStyle completamente riscritto con:
+    - ControlTemplate con Grid a due colonne (box + content)
+    - CheckBoxBorder 20x20 con CornerRadius 4
+    - CheckMark Path vettoriale (M1,5 L4,8 L11,1) con stroke 2px
+    - IndeterminateMark Rectangle 10x2 per stato indeterminate
+    - Checked state: background AccentBaseBrush, checkmark visibile
+    - Hover state: BorderBrush PrimaryLightBrush
+  - ModernRadioButtonStyle completamente riscritto con:
+    - ControlTemplate con Grid a due colonne (circle + content)
+    - RadioBorder 20x20 con CornerRadius 10 (cerchio perfetto)
+    - RadioDot Ellipse 10x10 bianca al centro
+    - Checked state: background AccentBaseBrush, dot visibile
+    - Hover state: BorderBrush PrimaryLightBrush
+  - ModernComboBoxToggleButton nuovo style:
+    - ChevronIcon Path (M1,1 L5,5 L9,1) con rotazione 180° quando aperto
+    - Stroke SecondaryTextBrush normale, PrimaryTextBrush su hover, AccentBaseBrush quando aperto
+    - CornerRadius 4 e focus states
+  - ModernComboBoxEditableTextBox per modalità editabile
+  - ModernComboBoxStyle completamente riscritto con:
+    - ControlTemplate con ToggleButton, ContentPresenter, Popup
+    - Popup con DropShadowEffect (BlurRadius 8, ShadowDepth 2)
+    - DropDownBorder con CornerRadius 4 e border
+  - ModernComboBoxItemStyle aggiornato con:
+    - ControlTemplate con hover e selected states
+    - IsHighlighted usa SurfaceHoverBrush
+    - IsSelected usa DataGridSelectedRowBrush
+- Integrato TabControlStyles.xaml in AppTheme.xaml MergedDictionaries
+- Build passa con 0 errori
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/Themes/Controls/TabControlStyles.xaml (nuovo)
+- src/TobaccoManagement.Desktop/Themes/Controls/InputStyles.xaml (modificato - ControlTemplate completi)
+- src/TobaccoManagement.Desktop/Themes/AppTheme.xaml (modificato - aggiunto TabControlStyles.xaml)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-035: Implementare Sistema Rollback per ripristino versione precedente da GitHub
+- UpdateSettings con PreviousVersion, IUpdateService.GetRollbackInfoAsync
+- AboutDialog con sezione rollback e progress bar
+
+---
+
+## 2026-03-04 - US-035: Sistema Rollback: ripristino versione precedente da GitHub
+
+### Implementato:
+- Aggiornato UpdateSettings.cs con proprietà:
+  - string? PreviousVersion (serializzata in update_settings.json come 'previousVersion')
+- Aggiornato IUpdateService con:
+  - Task ApplyUpdateAndRestartAsync(string downloadedFilePath, bool isRollback = false) — default value garantisce retrocompatibilità
+  - Task<UpdateInfo?> GetRollbackInfoAsync(string version, CancellationToken cancellationToken = default)
+- Aggiornato UpdateService.ApplyUpdateAndRestartAsync:
+  - Se !isRollback: salva GetCurrentVersion().ToString(3) come PreviousVersion nelle settings PRIMA di lanciare lo script PowerShell
+  - Se isRollback: azzera PreviousVersion nelle settings DOPO Process.Start (per non perdere l'info se UAC viene annullato)
+- Implementato UpdateService.GetRollbackInfoAsync:
+  - GET /repos/{owner}/{repo}/releases/tags/v{version} con autenticazione PAT DPAPI
+  - Riusa parsing asset .exe/.sha256 già presente in CheckForUpdateAsync
+  - Ritorna null se: release non esiste (404), non contiene .exe, errori HTTP/JSON/cancellazione
+- Aggiornato AboutDialog.xaml:
+  - Altezza finestra aumentata da 620 a 680 per evitare clipping
+  - Aggiunta sezione RollbackSection (Border arancione, Visibility=Collapsed di default)
+  - TxtRollbackInfo per messaggio informativo
+  - RollbackProgressSection con ProgressBar e TxtRollbackProgress
+  - BtnRollback 'Ripristina versione precedente' con stile arancione
+- Aggiornato AboutDialog.xaml.cs:
+  - Aggiunto parametro IUpdateService nel costruttore
+  - Campo _rollbackCts (CancellationTokenSource) e _isRollbackInProgress (bool)
+  - LoadRollbackInfoAsync() fire-and-forget: legge settings e mostra RollbackSection se PreviousVersion != null
+  - BtnRollback_Click: conferma MessageBox → mostra progress → GetRollbackInfoAsync → DownloadUpdateAsync con progress bar → ApplyUpdateAndRestartAsync(isRollback: true)
+  - Gestione errori con messaggio all'utente e ResetRollbackState()
+  - OnClosing cancella CancellationTokenSource se rollback in corso (stesso pattern di UpdateAvailableDialog)
+- Aggiornato MainViewModel.ShowAboutAsync:
+  - Risolve IUpdateService da DI e lo passa come 4° argomento al costruttore di AboutDialog
+- Dopo rollback completato: AboutDialog mostra sezione rollback assente al prossimo avvio (PreviousVersion = null)
+- Build passa con 0 errori
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/Services/UpdateSettings.cs (modificato - aggiunta PreviousVersion)
+- src/TobaccoManagement.Desktop/Services/IUpdateService.cs (modificato - GetRollbackInfoAsync, ApplyUpdateAndRestartAsync isRollback)
+- src/TobaccoManagement.Desktop/Services/UpdateService.cs (modificato - implementazione rollback)
+- src/TobaccoManagement.Desktop/Views/Dialogs/AboutDialog.xaml (modificato - sezione rollback)
+- src/TobaccoManagement.Desktop/Views/Dialogs/AboutDialog.xaml.cs (modificato - logica rollback)
+- src/TobaccoManagement.Desktop/ViewModels/MainViewModel.cs (modificato - passa IUpdateService ad AboutDialog)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-036: Migrazione infrastruttura AI su Semantic Kernel
+- US-037: ShopDataPlugin con function calling
+
+---
+
+## 2026-03-07 - US-036 e US-037: SK: Migrazione infrastruttura AI su Semantic Kernel
+
+### Implementato:
+- Aggiunto NuGet package Microsoft.SemanticKernel (1.73.0) a TobaccoManagement.Infrastructure.csproj
+- Aggiunto NuGet package Lost.SemanticKernel.Connectors.Anthropic (1.25.0-alpha3) per supporto Claude
+- Eliminati i file legacy (già segnalati come deleted in git status):
+  - Infrastructure/Services/IAgentService.cs
+  - Infrastructure/Services/AgentServiceFactory.cs
+  - Infrastructure/Services/GroqAgentService.cs
+  - Infrastructure/Services/ClaudeHaikuAgentService.cs
+- Creato IKernelService in Infrastructure/Services/AI con metodi:
+  - bool IsConfigured { get; }
+  - Task<string> SendMessageAsync(object chatHistory, string userMessage, CancellationToken ct)
+  - object CreateChatHistory()
+  - Task<bool> TestConnectionAsync(AgentProvider provider, string apiKey, CancellationToken ct)
+- Creato KernelService in Desktop/Services/AI con:
+  - Costruzione Kernel via builder pattern con cache (SemaphoreSlim per thread-safety)
+  - Supporto Groq via AddOpenAIChatCompletion (modelId llama-3.3-70b-versatile, endpoint https://api.groq.com/openai/v1)
+  - Supporto Claude Haiku via AddAnthropicChatCompletion (modelId claude-haiku-4-5-20251001)
+  - ShopDataPlugin registrato tramite kernel.Plugins.AddFromObject(_shopDataPlugin, "Negozio")
+  - SendMessageAsync con FunctionChoiceBehavior.Auto() per function calling automatico
+  - TestConnectionAsync che costruisce kernel temporaneo senza persistere
+  - Gestione errori con AgentApiException per timeout, 401, 429, 5xx, connessione
+- Creato ShopDataPlugin in Desktop/Services/AI/Plugins con funzioni:
+  - [KernelFunction("get_low_stock_products")]: prodotti con giacenza < scorta minima (max 20)
+  - [KernelFunction("get_today_sales")]: vendite del giorno (€ e transazioni)
+  - [KernelFunction("get_pending_orders")]: ordini Confirmed/InTransit (max 10)
+  - [KernelFunction("get_shop_info")]: NomeAttivita, P.IVA, CodiceRivenditaADM
+  - [KernelFunction("get_top_products")]: prodotti più venduti (parametri days, top)
+- Aggiornato App.xaml.cs:
+  - Aggiornate using statements per Desktop.Services.AI e Desktop.Services.AI.Plugins
+  - Registrati AddSingleton<ShopDataPlugin> e AddSingleton<IKernelService, KernelService>
+  - Rimossi riferimenti a AgentServiceFactory (già eliminato)
+- Aggiornato AgentViewModel (anticipato da US-038 per consentire build):
+  - Rimossa dipendenza da AgentServiceFactory, aggiunto IKernelService
+  - Aggiunto campo _chatHistory inizializzato con CreateChatHistory()
+  - Rimosso BuildContextAsync() e dipendenze non necessarie
+  - SendAsync usa _kernelService.SendMessageAsync(_chatHistory, userMessage, ct)
+  - Aggiunto ClearHistoryCommand per nuova conversazione
+  - IsConfigured delega a _kernelService.IsConfigured
+- Aggiornato AgentSettingsDialog.xaml.cs (anticipato da US-038 per consentire build):
+  - Rimossa dipendenza da AgentServiceFactory, aggiunto IKernelService
+  - TestButton_Click usa _kernelService.TestConnectionAsync(provider, apiKey)
+- Corretti errori di tipo in ShopDataPlugin.cs:
+  - SalesReportData.TotalSalesCount (era TransactionCount)
+  - profile.PartitaIVA?.Value (era profile.PartitaIVA)
+  - profile.CodiceRivenditaADM (era profile.CodiceAdm)
+  - ProductSalesStatistic.ProductDescription (era ProductName)
+- Corretti errori in KernelService.cs:
+  - Aggiunto using System.Net.Http per HttpRequestException
+  - Riordinato catch blocks (TaskCanceledException prima di OperationCanceledException)
+- Build passa con 0 errori e 0 warnings
+
+### File creati/modificati:
+- src/TobaccoManagement.Infrastructure/Services/AI/IKernelService.cs (nuovo)
+- src/TobaccoManagement.Desktop/Services/AI/KernelService.cs (nuovo)
+- src/TobaccoManagement.Desktop/Services/AI/Plugins/ShopDataPlugin.cs (nuovo)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - using e DI)
+- src/TobaccoManagement.Desktop/ViewModels/AgentViewModel.cs (modificato - IKernelService)
+- src/TobaccoManagement.Desktop/Views/Dialogs/AgentSettingsDialog.xaml.cs (modificato - IKernelService)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-038 parzialmente completata (AgentViewModel e AgentSettingsDialog già aggiornati)
+- Manca solo aggiunta pulsante "Nuova conversazione" in AgentView.xaml per completare US-038
+- US-039: Prossima feature - Provider Modello locale (GGUF)
+
+---
+
+## 2026-03-07 - US-038: SK: AgentViewModel con ChatHistory multi-turn e pulsante Nuova Conversazione
+
+### Implementato:
+- Aggiunto pulsante "Nuova conversazione" in AgentView.xaml header:
+  - Nuova colonna nel Grid header (terza colonna Auto)
+  - Pulsante con icona refresh Material Design (Path con Data per icona circolare)
+  - Bind a ClearHistoryCommand
+  - ToolTip "Nuova conversazione"
+  - Stile trasparente con hover effect (#33FFFFFF) e pressed effect (#55FFFFFF)
+  - CornerRadius 4 per design coerente
+- Verificato che tutte le altre acceptance criteria fossero già implementate in US-036/US-037:
+  - AgentViewModel: rimossa dipendenza da AgentServiceFactory, aggiunto IKernelService
+  - AgentViewModel: campo _chatHistory inizializzato con CreateChatHistory() nel costruttore
+  - AgentViewModel.SendAsync: usa _kernelService.SendMessageAsync(_chatHistory, userMessage, ct)
+  - AgentViewModel: BuildContextAsync() e dipendenze rimosse
+  - AgentViewModel: ClearHistoryCommand implementato (reinizializza _chatHistory e svuota Messages)
+  - AgentViewModel.IsConfigured: delega a _kernelService.IsConfigured
+  - AgentSettingsDialog.xaml.cs: TestButton_Click usa _kernelService.TestConnectionAsync(provider, apiKey)
+  - Gestione errori in SendAsync: AgentNotConfiguredException, AgentApiException, OperationCanceledException, Exception generica
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/Views/AgentView.xaml (modificato - aggiunto pulsante Nuova conversazione nell'header)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-039: Provider Modello locale (GGUF) - impostazioni e validazione
+- Aggiungere AgentProvider.LocalGGUF all'enum
+- Estendere AgentSettings con LocalModelPath
+- Aggiornare HasValidConfiguration per LocalGGUF
+
+---
+
+## 2026-03-07 - US-039: IA: Provider Modello locale (GGUF) – impostazioni e validazione
+
+### Implementato:
+- Aggiunto AgentProvider.LocalGGUF = 2 all'enum in IAgentSettingsService.cs con commento XML:
+  - Descrizione: "Modello locale GGUF. Non richiede API key, usa un file .gguf locale caricato in memoria tramite LLamaSharp."
+- Esteso AgentSettings record con nuova proprietà:
+  - string LocalModelPath (percorso assoluto del file .gguf), default string.Empty
+- Aggiornato GetActiveApiKey() per supportare LocalGGUF:
+  - Per Provider == LocalGGUF restituisce LocalModelPath (il chiamante può riusare lo stesso parametro per test e build kernel)
+- Aggiornato AgentSettingsService.HasValidConfiguration():
+  - Per Provider == LocalGGUF ritorna true se IsEnabled && !string.IsNullOrWhiteSpace(LocalModelPath) && File.Exists(LocalModelPath)
+  - Usa File.Exists per validare che il file esista realmente
+- Aggiornato docstring di IAgentSettingsService.HasValidConfiguration() per documentare il caso LocalGGUF
+- La serializzazione JSON (SaveSettingsAsync/LoadSettingsAsync) gestisce automaticamente LocalModelPath come parte del record AgentSettings
+
+### File creati/modificati:
+- src/TobaccoManagement.Infrastructure/Services/IAgentSettingsService.cs (modificato - AgentProvider enum, AgentSettings record, docstring)
+- src/TobaccoManagement.Infrastructure/Services/AgentSettingsService.cs (modificato - HasValidConfiguration)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-041: UI Desktop - Opzione Modello locale (GGUF) nel dialog impostazioni assistente
+- Aggiungere RadioButton per LocalGGUF con pannello per percorso file e pulsante Sfoglia
+
+---
+
+## 2026-03-07 - US-040: IA: Integrazione LLamaSharp per inferenza locale GGUF
+
+### Implementato:
+- Aggiunti pacchetti NuGet a TobaccoManagement.Desktop.csproj:
+  - LLamaSharp (0.21.0)
+  - LLamaSharp.Backend.Cpu (0.21.0)
+  - LLamaSharp.semantic-kernel (0.21.0)
+- Aggiornato KernelService.cs per supportare AgentProvider.LocalGGUF:
+  - Implementato IDisposable con pattern Dispose(bool disposing)
+  - Aggiunti campi _cachedLlamaWeights (LLamaWeights?) e _cachedLlamaContext (LLamaContext?) per caching risorse
+  - BuildKernel: aggiunto case AgentProvider.LocalGGUF che crea LLamaWeights da file, LLamaContext, InteractiveExecutor e LLamaSharpChatCompletion registrato come IChatCompletionService
+  - CreateLLamaSharpChatCompletion: metodo privato per creare il servizio chat con gestione errori (file non trovato, estensione non valida, formato corrotto, OutOfMemoryException)
+  - DisposeLlamaResources: metodo privato per rilasciare in sicurezza le risorse LLama
+  - GetOrCreateKernelAsync: aggiornato per chiamare DisposeLlamaResources quando il provider cambia da/a LocalGGUF
+  - TestLocalGGUFAsync: metodo privato per testare il caricamento di un modello GGUF con risorse temporanee che vengono sempre rilasciate nel finally
+  - TestConnectionAsync: aggiunto branch per AgentProvider.LocalGGUF che chiama TestLocalGGUFAsync
+- Risolti conflitti namespace con alias `SKChatHistory = Microsoft.SemanticKernel.ChatCompletion.ChatHistory`
+- Aggiunto using System.IO per File.Exists e using Microsoft.Extensions.DependencyInjection per AddSingleton
+- ModelParams configurato con ContextSize (4096 per produzione, 512 per test) e GpuLayerCount=0 (solo CPU)
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/TobaccoManagement.Desktop.csproj (modificato - aggiunti pacchetti LLamaSharp)
+- src/TobaccoManagement.Desktop/Services/AI/KernelService.cs (modificato - supporto LocalGGUF con LLamaSharp)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-041: UI Desktop - Opzione Modello locale (GGUF) nel dialog impostazioni assistente
+- Aggiungere RadioButton per LocalGGUF con pannello per percorso file e pulsante Sfoglia
+- Implementare OpenFileDialog con filtro *.gguf
+
+---
+
+## 2026-03-07 - US-043: Documentazione: Visualizzatore Markdown in-app
+
+### Implementato:
+- Verificato che Markdig.Wpf (0.5.0.1) era già presente in Desktop.csproj
+- Verificato che i file Docs/*.md erano già configurati come EmbeddedResource nel csproj
+- Verificato HelpViewModel.cs esistente in ViewModels con:
+  - ObservableCollection<DocumentationChapter> Chapters per lista capitoli
+  - DocumentationChapter class con FileName, Title, Order, Icon, IsSelected
+  - SelectedChapter, CurrentMarkdownContent, IsLoading, ErrorMessage proprietà
+  - LoadChapters() che carica i file .md da risorse embedded tramite Assembly.GetManifestResourceNames()
+  - ParseFileName() per estrarre ordine (es. "01") e titolo (es. "Dashboard") dal nome file
+  - LoadChapterContent() per leggere il contenuto Markdown dalla risorsa embedded
+  - ChapterIcons dictionary per mappare icone emoji per ogni modulo (Dashboard→📊, Prodotti→📦, etc.)
+  - SelectChapterCommand, PreviousChapterCommand, NextChapterCommand per navigazione
+  - CanGoPrevious, CanGoNext proprietà per abilitare/disabilitare pulsanti navigazione
+- Verificato HelpView.xaml esistente in Views con:
+  - Layout a due colonne: sidebar 280px + contenuto principale
+  - Header sidebar con titolo "📚 Guida Software" e sottotitolo
+  - Lista capitoli scrollabile con ItemsControl, pulsante per ogni capitolo con icona e titolo
+  - ChapterButtonStyle con hover e selected states (bordo sinistro AccentBaseBrush quando selezionato)
+  - Header contenuto con titolo capitolo corrente e pulsanti Precedente/Successivo
+  - markdig:MarkdownViewer per rendering Markdown con binding a CurrentMarkdownContent
+  - Loading indicator con spinner durante caricamento
+  - Empty state quando nessun capitolo selezionato
+- Verificato 'Guida Software' presente nella sidebar MainWindow.xaml con ShowHelpCommand
+- Verificato MainViewModel.cs con:
+  - Campo _helpViewModel iniettato nel costruttore
+  - [RelayCommand] ShowHelp() che imposta CurrentViewModel = _helpViewModel e CurrentSection = "Guida Software"
+  - DataTemplate per HelpViewModel → HelpView nel ContentControl.Resources
+- Verificato HelpViewModel registrato in DI come Transient in App.xaml.cs (linea 210)
+- Build passa con 0 errori
+
+### File verificati (già esistenti):
+- src/TobaccoManagement.Desktop/TobaccoManagement.Desktop.csproj (Markdig.Wpf package, EmbeddedResource Docs/*.md)
+- src/TobaccoManagement.Desktop/ViewModels/HelpViewModel.cs
+- src/TobaccoManagement.Desktop/Views/HelpView.xaml
+- src/TobaccoManagement.Desktop/Views/MainWindow.xaml (sidebar e DataTemplate)
+- src/TobaccoManagement.Desktop/ViewModels/MainViewModel.cs (ShowHelpCommand)
+- src/TobaccoManagement.Desktop/App.xaml.cs (DI registration)
+
+### 16 file Docs disponibili:
+- 01_Dashboard.md, 02_Prodotti.md, 03_Importa_Listino.md, 04_Barcode.md
+- 05_Ordini_Logista.md, 06_Cassa.md, 07_Gratta_e_Vinci.md, 08_Valori_Bollati.md
+- 09_Report.md, 10_Movimenti_Magazzino.md, 11_Calendario.md, 12_Database.md
+- 13_Utenti.md, 14_Fatture_AdE.md, 15_Assistente_IA.md, 16_Estensione_Mobile.md
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-044: IA: Knowledge base (RAG) da documentazione locale
+- Creare DocumentationPlugin.cs in Desktop/Services/AI/Plugins
+- Registrare plugin nel KernelService
+- Aggiornare System Message in AgentViewModel
+
+---
+
+## 2026-03-07 - US-044: IA: Knowledge base (RAG) da documentazione locale
+
+### Implementato:
+- Creato DocumentationPlugin.cs in Desktop/Services/AI/Plugins con:
+  - Caricamento automatico di tutti i file .md da risorse embedded al momento della creazione del plugin
+  - Cache in memoria (Dictionary<string, DocumentationEntry>) per performance
+  - DocumentationEntry record con ModuleName, Title, Content, Order
+  - Metodo LoadDocumentation() che usa Assembly.GetManifestResourceNames() per trovare i file .md
+  - Metodi helper ExtractFileNameFromResource() e ParseFileName() per parsing nomi file
+- Implementate tre funzioni KernelFunction:
+  - get_module_help: accetta nome modulo (es. "Dashboard", "Prodotti", "Cassa"), restituisce contenuto Markdown con troncamento a 3000 caratteri per evitare risposte troppo lunghe
+  - search_documentation: ricerca full-text con ranking basato su rilevanza (peso 10 per match nel titolo, +1 per ogni occorrenza nel contenuto), estrazione snippet contestuali, restituisce top 3 risultati
+  - list_documentation_modules: restituisce elenco completo dei 16 capitoli documentati
+- Registrato DocumentationPlugin come Singleton in App.xaml.cs (linea 145)
+- Aggiornato KernelService.cs:
+  - Aggiunto campo _documentationPlugin
+  - Aggiornato costruttore con parametro DocumentationPlugin
+  - BuildKernel registra plugin con kernel.Plugins.AddFromObject(_documentationPlugin, "Documentazione")
+- Aggiornato System Message in KernelService con:
+  - Due categorie di funzioni: DATI NEGOZIO (plugin 'Negozio') e DOCUMENTAZIONE SOFTWARE (plugin 'Documentazione')
+  - Regole specifiche per quando usare ciascuna categoria
+  - Istruzioni per usare search_documentation per domande specifiche o get_module_help per moduli noti
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/Services/AI/Plugins/DocumentationPlugin.cs (nuovo)
+- src/TobaccoManagement.Desktop/Services/AI/KernelService.cs (modificato - aggiunto _documentationPlugin, costruttore, BuildKernel, System prompt)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - registrazione DocumentationPlugin come Singleton)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-045: Spiegazione IA per suggerimenti ordine
+
+---
+
+## 2026-03-12 - US-045: IA: Spiegazione in linguaggio naturale dei suggerimenti ordine
+
+### Implementato:
+- Aggiunto campo string? AiExplanation a OrderSuggestion in Domain/Models/OrderSuggestion.cs
+- Aggiornato OrderSuggestionItemViewModel con:
+  - ObservableProperty AiExplanation, IsGeneratingExplanation, IsExplanationExpanded
+  - Proprietà computed HasAiExplanation (true se AiExplanation non vuoto)
+  - Metodo GenerateAiExplanationAsync(IKernelService) che costruisce un prompt strutturato e chiama l'IA
+  - Metodo BuildExplanationPrompt() con dati prodotto (descrizione, codice, giacenza, scorta min, vendite, giorni autonomia, quantità, priorità, trend)
+  - RelayCommand ToggleExplanation per espandere/collassare il pannello
+- Aggiornato OrderSuggestionViewModel con:
+  - Iniezione opzionale di IKernelService nel costruttore
+  - Proprietà IsAiConfigured che delega a _kernelService?.IsConfigured
+  - Metodo GenerateAiExplanationsInBackgroundAsync() chiamato automaticamente dopo il caricamento dei suggerimenti
+  - Generazione in background per ogni suggerimento con gestione errori graceful
+- Prompt IA in italiano che istruisce il modello a:
+  - Rispondere in 2-3 frasi discorsive (non elenchi puntati)
+  - Spiegare perché il prodotto è urgente
+  - Descrivere cosa succederà se non viene ordinato
+- Aggiornato CreateLogistaOrderView.xaml con sezione AI Explanation:
+  - ToggleButton "Perché?" con icona 💡, visibile solo quando HasAiExplanation o IsGeneratingExplanation
+  - Testo "Analisi in corso..." con "..." durante generazione
+  - Pannello espandibile con sfondo #F0F7FF, bordo InfoBaseBrush, CornerRadius 4
+  - MultiDataTrigger per mostrare pannello solo quando IsExplanationExpanded=true E HasAiExplanation=true
+  - Pulsante nascosto se IA non configurata (stile con DataTrigger)
+
+### File creati/modificati:
+- src/TobaccoManagement.Domain/Models/OrderSuggestion.cs (modificato - aggiunto AiExplanation)
+- src/TobaccoManagement.Desktop/ViewModels/OrderSuggestionViewModel.cs (modificato - IKernelService, GenerateAiExplanationsInBackgroundAsync, OrderSuggestionItemViewModel con explanation)
+- src/TobaccoManagement.Desktop/Views/CreateLogistaOrderView.xaml (modificato - sezione AI Explanation collassabile)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-046: Sintesi esecutiva del report vendite
+
+---
+
+## 2026-03-12 - US-046: IA: Sintesi esecutiva del report vendite
+
+### Implementato:
+- Aggiornato ReportingViewModel.cs con:
+  - Aggiunto using TobaccoManagement.Infrastructure.Services.AI
+  - Campo privato _kernelService (IKernelService?) per iniezione opzionale
+  - ObservableProperty AiSummary (string?) per la sintesi generata
+  - ObservableProperty IsGeneratingSummary (bool) per stato loading
+  - Proprietà computed IsAiConfigured (true se kernelService configurato)
+  - Costruttore aggiornato con parametro opzionale IKernelService
+- Implementato metodo GenerateAiSummaryAsync():
+  - Chiamato automaticamente dopo LoadSalesReportAsync() (fire-and-forget con _)
+  - Verifica se IA configurata e dati disponibili prima di procedere
+  - Gestione errori graceful (fallback silenzioso a null)
+- Implementato metodo BuildAiSummaryPrompt():
+  - Periodo analizzato (data inizio/fine)
+  - Totale ricavi con formattazione €
+  - Numero transazioni
+  - Valore medio scontrino
+  - Top 3 prodotti per fatturato con quantità
+  - Variazione vs mese precedente (se disponibile)
+  - Istruzioni per risposta in 3-5 frasi discorsive in italiano
+- Aggiornato ReportingView.xaml:
+  - Sezione "Analisi IA" con Border bianco, CornerRadius 8, DropShadowEffect
+  - Header con icona robot 🤖 e titolo "Analisi IA"
+  - Indicatore loading "Generazione analisi in corso..."
+  - TextBlock wrappato per la sintesi con LineHeight 22
+  - Visibility collegata a IsAiConfigured con BooleanToVisibilityConverter
+  - Posizionata sotto il header con filtri date e sopra il TabControl
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/ViewModels/ReportingViewModel.cs (modificato)
+- src/TobaccoManagement.Desktop/Views/ReportingView.xaml (modificato)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-047: Suggerimenti automatici eventi calendario da pattern ordini
+
+---
+
+## 2026-03-13 - US-047: IA: Suggerimenti automatici eventi calendario da pattern ordini
+
+### Implementato:
+- Creato CalendarSuggestionPlugin.cs in Desktop/Services/AI/Plugins con:
+  - Funzione KernelFunction get_order_patterns che analizza ultimi 90 giorni di ordini Logista
+  - Estrae giorni della settimana più frequenti per ordini (da ConfirmedAt) e consegne (da ActualDeliveryDate)
+  - Calcola frequenza media tra ordini consecutivi
+  - Calcola lead time medio (tempo tra conferma e consegna)
+  - Identifica ultimo ordine e suggerisce prossimo ordine previsto
+  - Helper GetItalianDayName per nomi giorni in italiano
+- Registrato CalendarSuggestionPlugin in App.xaml.cs come Singleton
+- Aggiornato KernelService.cs:
+  - Aggiunto campo _calendarSuggestionPlugin
+  - Costruttore aggiornato con parametro CalendarSuggestionPlugin
+  - BuildKernel registra plugin con nome 'Calendario'
+  - System prompt aggiornato per includere categoria CALENDARIO E PATTERN ORDINI
+- Aggiornato CalendarViewModel.cs:
+  - Aggiunto using TobaccoManagement.Infrastructure.Services.AI e System.Text.Json
+  - Inietta IKernelService opzionale nel costruttore
+  - ObservableProperty AiSuggestions (ObservableCollection<AiCalendarSuggestion>)
+  - ObservableProperty IsGeneratingAiSuggestions (bool)
+  - ObservableProperty ShowAiSuggestionsPanel (bool)
+  - Proprietà computed IsAiConfigured (delega a _kernelService?.IsConfigured)
+  - RelayCommand ToggleAiSuggestionsPanelCommand per mostrare/nascondere pannello
+  - RelayCommand GenerateAiSuggestionsAsync: costruisce prompt che richiede JSON con suggerimenti, chiama SendOneshotAsync, parsa risposta
+  - ParseAiSuggestionsResponse: parsing JSON robusto con gestione backticks markdown, trova array JSON, deserializza in List<AiSuggestionDto>
+  - RelayCommand AddAiSuggestionToCalendarCommand: crea evento via ICalendarService.CreateEventAsync, rimuove suggerimento da lista
+  - RelayCommand DismissAiSuggestionCommand: rimuove suggerimento ignorato
+- Creato AiCalendarSuggestion class con: Title, Description, ProposedDate, EventType, EventTypeName, FormattedDate
+- Creato AiSuggestionDto class per parsing JSON: Title, Description, ProposedDate, EventType
+- Aggiornato CalendarView.xaml:
+  - Grid.RowDefinitions aggiunto una riga (Auto, Auto, Auto, *)
+  - Loading Overlay Grid.RowSpan aggiornato a 4
+  - Pulsante 'Suggerimenti IA' blu nell'header (visibile solo se IsAiConfigured)
+  - Stile toggle con background diverso quando ShowAiSuggestionsPanel=true
+  - Pannello AI Suggestions in Grid.Row="1" con border blu #2196F3
+  - Header con icona robot e pulsante 'Rigenera'
+  - Loading state con ProgressBar e messaggio
+  - ItemsControl con DataTemplate per ogni suggerimento:
+    - Card con sfondo #F5F9FF, bordo #BBDEFB, CornerRadius 6
+    - Titolo in blu #1976D2, descrizione in grigio
+    - Badge data formattata e tipo evento
+    - Pulsanti 'Aggiungi' (verde) e 'Ignora' (X grigio/rosso)
+  - Empty state con messaggio informativo
+  - Navigation Bar spostato a Grid.Row="2"
+  - Main Content spostato a Grid.Row="3"
+
+### File creati/modificati:
+- src/TobaccoManagement.Desktop/Services/AI/Plugins/CalendarSuggestionPlugin.cs (nuovo)
+- src/TobaccoManagement.Desktop/Services/AI/KernelService.cs (modificato - _calendarSuggestionPlugin, costruttore, BuildKernel, SystemPrompt)
+- src/TobaccoManagement.Desktop/App.xaml.cs (modificato - AddSingleton<CalendarSuggestionPlugin>)
+- src/TobaccoManagement.Desktop/ViewModels/CalendarViewModel.cs (modificato - IKernelService, AI suggestions, AiCalendarSuggestion, AiSuggestionDto)
+- src/TobaccoManagement.Desktop/Views/CalendarView.xaml (modificato - pulsante header, pannello AI suggestions, row definitions)
+
+### Issues:
+- Nessuno
+
+### Note per prossima iterazione:
+- US-048: IA: Helpdesk contestuale basato sulla schermata attiva
