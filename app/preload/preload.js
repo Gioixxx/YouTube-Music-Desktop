@@ -22,6 +22,7 @@ const ALLOWED_SEND_CHANNELS = [
   'media:previous',
   'track:changed',
   'shortcuts:reload',
+  'theme:set',
 ];
 
 /**
@@ -31,6 +32,7 @@ const ALLOWED_SEND_CHANNELS = [
 const ALLOWED_RECEIVE_CHANNELS = [
   'theme:changed',
   'settings:updated',
+  'miniPlayer:update',
 ];
 
 // ---------------------------------------------------------------------------

@@ -8,10 +8,16 @@
     "build": "echo 'Build check OK' && exit 0",
     "dist": "electron-builder --win"
   },
-  "keywords": ["youtube", "music", "electron", "desktop"],
+  "keywords": [
+    "youtube",
+    "music",
+    "electron",
+    "desktop"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "discord-rpc": "^4.0.1",
     "electron-store": "^8.1.0"
   },
   "devDependencies": {
@@ -28,11 +34,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icons/icon.ico"

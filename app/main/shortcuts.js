@@ -10,8 +10,9 @@
  *   Ctrl+Alt+P  — Play / Pause
  *   Ctrl+Alt+N  — Next track
  *   Ctrl+Alt+B  — Previous track
- *   Ctrl+Alt+M  — Toggle mini-player mode
+ *   Ctrl+Alt+M  — Toggle mini-player mode (resize main window)
  *   Ctrl+Alt+Y  — Show / hide application window
+ *   Ctrl+Alt+I  — Toggle mini player window (always-on-top companion)
  *
  * Whether shortcuts are registered is controlled by the
  * `enableGlobalShortcuts` key in configStore (default: true).
@@ -25,6 +26,7 @@
 const { globalShortcut, ipcMain } = require('electron');
 const { togglePlay, nextTrack, previousTrack } = require('./mediaController');
 const { toggleVisibility, toggleMiniPlayer } = require('./windowManager');
+const { toggleMiniPlayerWindow } = require('./miniPlayer');
 const {
   getEnableGlobalShortcuts,
   setEnableGlobalShortcuts,
@@ -39,11 +41,12 @@ const {
  * @type {Array<{ accelerator: string, handler: () => void }>}
  */
 const DEFAULT_SHORTCUTS = [
-  { accelerator: 'Ctrl+Alt+P', handler: togglePlay        },
-  { accelerator: 'Ctrl+Alt+N', handler: nextTrack         },
-  { accelerator: 'Ctrl+Alt+B', handler: previousTrack     },
-  { accelerator: 'Ctrl+Alt+M', handler: toggleMiniPlayer  },
-  { accelerator: 'Ctrl+Alt+Y', handler: toggleVisibility  },
+  { accelerator: 'Ctrl+Alt+P', handler: togglePlay             },
+  { accelerator: 'Ctrl+Alt+N', handler: nextTrack              },
+  { accelerator: 'Ctrl+Alt+B', handler: previousTrack          },
+  { accelerator: 'Ctrl+Alt+M', handler: toggleMiniPlayer       },
+  { accelerator: 'Ctrl+Alt+Y', handler: toggleVisibility       },
+  { accelerator: 'Ctrl+Alt+I', handler: toggleMiniPlayerWindow },
 ];
 
 // ---------------------------------------------------------------------------
