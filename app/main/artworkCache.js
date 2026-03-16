@@ -3,56 +3,37 @@
 /**
  * artworkCache.js
  *
- * Small download-and-cache service for track artwork images.
+ * Download service for track artwork images.
  *
- * Artwork URLs are downloaded once and stored as files inside a dedicated
- * sub-directory of the app's userData folder.  Subsequent requests for the
- * same URL are served from disk without any network round-trip.
+ * Cache storage and LRU eviction are delegated to cacheManager so that all
+ * cached artwork lives under {userData}/cache/artwork/ and respects the
+ * configured size limit.
  *
  * Public API:
  *   getArtworkPath(url)  →  Promise<string | null>
- *     Resolves to the local file-system path of the cached image, or null
- *     when the download fails or url is falsy.
+ *     Returns the local path of the artwork (downloading if necessary),
+ *     or null when the URL is falsy or the download fails.
  *
  *   getCacheDir()  →  string
- *     Returns the absolute path of the cache directory (created lazily).
+ *     Convenience re-export of cacheManager.getCacheDir().
  */
 
-const fs   = require('fs');
-const path = require('path');
-const http  = require('http');
-const https = require('https');
+const fs     = require('fs');
+const path   = require('path');
+const http   = require('http');
+const https  = require('https');
 const crypto = require('crypto');
-const { app } = require('electron');
-
-// ---------------------------------------------------------------------------
-// Cache directory
-// ---------------------------------------------------------------------------
-
-/**
- * Returns (and creates if needed) the artwork cache directory.
- * Uses app.getPath('userData') so it is writable on every platform.
- *
- * @returns {string}
- */
-function getCacheDir() {
-  const dir = path.join(app.getPath('userData'), 'artwork-cache');
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  return dir;
-}
+const { getCacheDir, getCachedPath, store } = require('./cacheManager');
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Derives a stable filename from a URL by SHA-1 hashing it,
- * preserving the original extension when detectable.
+ * Derives a stable filename from a URL (SHA-1 hash + original extension).
  *
  * @param {string} url
- * @returns {string}  e.g. "a3f8c2…d1.jpg"
+ * @returns {string}
  */
 function _fileNameForUrl(url) {
   const hash = crypto.createHash('sha1').update(url).digest('hex');
@@ -68,7 +49,7 @@ function _fileNameForUrl(url) {
 }
 
 /**
- * Downloads a URL to a local file.
+ * Downloads a URL to a local file path, following up to one redirect.
  *
  * @param {string} url
  * @param {string} dest  Absolute destination path.
@@ -79,7 +60,6 @@ function _download(url, dest) {
     const transport = url.startsWith('https') ? https : http;
 
     const request = transport.get(url, (response) => {
-      // Follow up to one redirect.
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         _download(response.headers.location, dest).then(resolve).catch(reject);
         return;
@@ -111,7 +91,9 @@ function _download(url, dest) {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns the local path for an artwork URL, downloading it on first access.
+ * Returns the local path for an artwork URL.
+ * Serves from the LRU cache (via cacheManager) when available;
+ * downloads and registers in the cache otherwise.
  *
  * @param {string} url  Remote artwork URL.
  * @returns {Promise<string | null>}  Local file path, or null on error.
@@ -119,14 +101,16 @@ function _download(url, dest) {
 async function getArtworkPath(url) {
   if (!url) return null;
 
-  const dest = path.join(getCacheDir(), _fileNameForUrl(url));
+  // Check LRU cache first (also updates lastAccess).
+  const cached = getCachedPath(url);
+  if (cached) return cached;
 
-  if (fs.existsSync(dest)) {
-    return dest;
-  }
+  // Cache miss — download to the managed cache directory.
+  const dest = path.join(getCacheDir(), _fileNameForUrl(url));
 
   try {
     await _download(url, dest);
+    store(url, dest); // register + evict if needed
     return dest;
   } catch (err) {
     console.warn(`[artworkCache] Failed to download artwork: ${err.message}`);

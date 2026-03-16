@@ -11,15 +11,20 @@
  *     When false, no global keyboard shortcuts are registered.
  *   showNotifications  {boolean}  default: true
  *     When false, track-change notifications are suppressed.
+ *   artworkCacheMaxSize  {number}  default: 104857600 (100 MB)
+ *     Maximum total size in bytes for the artwork cache before LRU eviction.
  */
 
 const Store = require('electron-store');
+
+const DEFAULT_ARTWORK_CACHE_MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 
 const store = new Store({
   name: 'app-config',
   defaults: {
     enableGlobalShortcuts: true,
     showNotifications: true,
+    artworkCacheMaxSize: DEFAULT_ARTWORK_CACHE_MAX_SIZE,
   },
 });
 
@@ -63,9 +68,31 @@ function setShowNotifications(value) {
   store.set('showNotifications', Boolean(value));
 }
 
+// ---------------------------------------------------------------------------
+// artworkCacheMaxSize
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the maximum total size in bytes allowed for the artwork cache.
+ * @returns {number}
+ */
+function getArtworkCacheMaxSize() {
+  return store.get('artworkCacheMaxSize');
+}
+
+/**
+ * Persists the artworkCacheMaxSize setting.
+ * @param {number} bytes
+ */
+function setArtworkCacheMaxSize(bytes) {
+  store.set('artworkCacheMaxSize', Number(bytes));
+}
+
 module.exports = {
   getEnableGlobalShortcuts,
   setEnableGlobalShortcuts,
   getShowNotifications,
   setShowNotifications,
+  getArtworkCacheMaxSize,
+  setArtworkCacheMaxSize,
 };
