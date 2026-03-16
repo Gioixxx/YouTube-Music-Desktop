@@ -1,7 +1,7 @@
 'use strict';
 
 const { app, BrowserWindow } = require('electron');
-const { getCloseToTray } = require('./settings');
+const { getCloseToTray, getEnableDiscordRPC } = require('./settings');
 const { createMainWindow } = require('./windowManager');
 const { initSecurity } = require('./securityManager');
 const { initMediaSession, unregisterMediaKeys } = require('./mediaSessionManager');
@@ -10,8 +10,9 @@ const { initNotifications } = require('./notifications');
 const { initTray, destroyTray } = require('./tray');
 const { initMiniPlayer, destroyMiniPlayerWindow } = require('./miniPlayer');
 const { initTheme } = require('./themeManager');
-const { initDiscordRpc, destroyDiscordRpc } = require('./discordRpc');
-const { initUpdater } = require('./updater');
+
+// Optional-module teardown functions — populated lazily in whenReady.
+let destroyDiscordRpc = () => {};
 
 app.whenReady().then(() => {
   initSecurity();
@@ -19,8 +20,21 @@ app.whenReady().then(() => {
   initMediaSession();
   initShortcuts();
   initNotifications();
-  initDiscordRpc();
-  initUpdater();
+
+  // --- Lazy-loaded optional modules ---
+
+  // Discord RPC: only require and initialise when the user has enabled it.
+  // This avoids loading the ~1 MB discord-rpc native binding on every launch.
+  if (getEnableDiscordRPC()) {
+    const discordRpc = require('./discordRpc');
+    discordRpc.initDiscordRpc();
+    destroyDiscordRpc = discordRpc.destroyDiscordRpc;
+  }
+
+  // Auto-updater: electron-updater is lazily required inside initUpdater()
+  // itself and is a no-op in dev; safe to call unconditionally.
+  require('./updater').initUpdater();
+
   initMiniPlayer();
   initTray();
   createMainWindow();

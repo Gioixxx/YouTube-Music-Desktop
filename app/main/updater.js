@@ -26,9 +26,14 @@
  *   checkForUpdatesManual()    Trigger an immediate check (e.g. from tray menu).
  */
 
-const { autoUpdater } = require('electron-updater');
+// electron-updater is required lazily inside _configure() so the ~3 MB
+// native module is only loaded when the updater is actually initialised
+// (i.e. when the app is packaged and running in production).
 const { dialog, app }  = require('electron');
 const { getMainWindow } = require('./windowManager');
+
+/** @type {import('electron-updater').AppUpdater} */
+let autoUpdater = null;
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -60,8 +65,12 @@ let checkInterval = null;
 
 /**
  * Configures autoUpdater to pull from the project's GitHub Releases.
+ * Lazily requires electron-updater on first call.
  */
 function _configure() {
+  // Lazy-load: only pay the require cost when actually needed.
+  ({ autoUpdater } = require('electron-updater'));
+
   autoUpdater.autoDownload    = false; // we trigger the download ourselves
   autoUpdater.autoInstallOnAppQuit = true;
 
