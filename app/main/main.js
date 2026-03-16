@@ -10,6 +10,7 @@ const { initNotifications } = require('./notifications');
 const { initTray, destroyTray } = require('./tray');
 const { initMiniPlayer, destroyMiniPlayerWindow } = require('./miniPlayer');
 const { initTheme } = require('./themeManager');
+const { initDiscordRpc, destroyDiscordRpc } = require('./discordRpc');
 
 app.whenReady().then(() => {
   initSecurity();
@@ -17,6 +18,7 @@ app.whenReady().then(() => {
   initMediaSession();
   initShortcuts();
   initNotifications();
+  initDiscordRpc();
   initMiniPlayer();
   initTray();
   createMainWindow();
@@ -37,6 +39,7 @@ app.on('before-quit', () => {
 app.on('will-quit', () => {
   unregisterMediaKeys();
   unregisterShortcuts();
+  destroyDiscordRpc();
   destroyMiniPlayerWindow();
   destroyTray();
 });
