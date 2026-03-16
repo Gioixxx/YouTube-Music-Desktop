@@ -14,7 +14,7 @@
  *     are blocked (handled by the caller if needed)
  */
 
-const { BrowserWindow, screen, shell, app } = require('electron');
+const { BrowserWindow, screen, shell, app, Notification } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const { initAdBlock } = require('./adBlockManager');
@@ -22,6 +22,8 @@ const {
   getStartMinimized,
   getMinimizeToTray,
   getCloseToTray,
+  getClosedToTrayHintShown,
+  setClosedToTrayHintShown,
 } = require('./settings');
 
 /** The URL loaded by the main window. */
@@ -178,6 +180,16 @@ function createMainWindow() {
     if (getCloseToTray() && !app.isQuiting) {
       event.preventDefault();
       win.hide();
+
+      // Show a one-time hint so the user knows the app is still running.
+      if (!getClosedToTrayHintShown() && Notification.isSupported()) {
+        new Notification({
+          title: 'YouTube Music Desktop',
+          body: 'The app is still running in the system tray. Use the tray menu to quit.',
+          silent: true,
+        }).show();
+        setClosedToTrayHintShown(true);
+      }
     }
   });
 

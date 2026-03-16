@@ -77,8 +77,9 @@ const store = new Store({
     startMinimized:        false,
     minimizeToTray:        true,
     closeToTray:           true,
-    enableDiscordRPC:      false,
-    shortcuts:             DEFAULT_SHORTCUTS,
+    enableDiscordRPC:        false,
+    shortcuts:               DEFAULT_SHORTCUTS,
+    closedToTrayHintShown:   false,
   },
 });
 
@@ -213,4 +214,7 @@ module.exports = {
   getAll,
   // expose the raw store for advanced use (e.g. electron-store's onDidChange)
   store,
+  // internal / one-shot flags
+  getClosedToTrayHintShown: () => store.get('closedToTrayHintShown'),
+  setClosedToTrayHintShown: (v) => store.set('closedToTrayHintShown', Boolean(v)),
 };
