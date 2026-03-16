@@ -28,7 +28,8 @@ npm run dist       # build Windows installer (requires electron-builder)
 | Document | Description |
 |----------|-------------|
 | [docs/testing-functional.md](docs/testing-functional.md) | Functional test plan — run before each release |
-| [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | Performance targets and measurement guide |
+| [docs/testing-performance.md](docs/testing-performance.md) | Performance & resource test checklist (CPU, RAM, network, startup) |
+| [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | Performance targets, optimisations and measurement guide |
 
 ## Release Checklist
 
