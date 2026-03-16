@@ -33,6 +33,11 @@ npm run dist       # build Windows installer (requires electron-builder)
 | [docs/distribution.md](docs/distribution.md) | Release publishing, code signing and GitHub Actions CI guide |
 
 ## Release Checklist
-
+ 
 Before publishing a new release, run the full **Critical** tier of the
 [functional test plan](docs/testing-functional.md) and confirm all tests pass.
+
+## Licenza
+
+Questo progetto è rilasciato sotto licenza **GNU GPL v3.0 o successiva (GPL-3.0-or-later)**.
+Per maggiori dettagli vedere il file `LICENSE` nella root del repository.
