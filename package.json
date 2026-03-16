@@ -50,10 +50,7 @@
         }
       ],
       "icon": "assets/icons/icon.ico",
-      "publisherName": "Gioixxx",
-      "signingHashAlgorithms": [
-        "sha256"
-      ]
+      "publisherName": "Gioixxx"
     },
     "nsis": {
       "oneClick": false,
