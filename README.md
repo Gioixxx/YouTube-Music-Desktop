@@ -23,6 +23,27 @@ npm start          # launch in development
 npm run dist       # build Windows installer (requires electron-builder)
 ```
 
+## Deploy su Git e download del setup
+
+1. **Crea il repository su GitHub** (se non esiste): [github.com/new](https://github.com/new) con nome `YouTube-Music-Desktop` (o quello che preferisci).
+
+2. **Inizializza Git e push** (dalla cartella del progetto):
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git branch -M main
+   git remote add origin https://github.com/Gioixxx/YouTube-Music-Desktop.git
+   git push -u origin main
+   ```
+
+3. **Scarica il setup** dopo il push:
+   - Vai su **GitHub** → repository **YouTube-Music-Desktop** → tab **Actions**.
+   - Apri l’ultima esecuzione del workflow **"Build"** (verde).
+   - In fondo alla pagina, nella sezione **Artifacts**, scarica `YouTube-Music-Desktop-<commit>`: troverai `YouTubeMusicDesktopSetup.exe` (installer) e `YouTubeMusicDesktop.exe` (portabile).
+
+Il workflow **Build** parte automaticamente a ogni push su `main`; non servono token né certificati. Per rilasci ufficiali con aggiornamenti automatici usa il workflow **Release** (vedi [docs/distribution.md](docs/distribution.md)).
+
 ## Documentation
 
 | Document | Description |
