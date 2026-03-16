@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "build": "echo 'Build check OK' && exit 0",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "release": "electron-builder --win --publish always"
   },
   "keywords": [
     "youtube",
@@ -46,7 +47,10 @@
           ]
         }
       ],
-      "icon": "assets/icons/icon.ico"
+      "icon": "assets/icons/icon.ico",
+      "signingHashAlgorithms": ["sha256"],
+      "certificateFile": "${env.WIN_CSC_LINK}",
+      "certificatePassword": "${env.WIN_CSC_KEY_PASSWORD}"
     },
     "nsis": {
       "oneClick": false,
@@ -60,6 +64,12 @@
     },
     "portable": {
       "artifactName": "YouTubeMusicDesktop.exe"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Gioixxx",
+      "repo": "YouTube-Music-Desktop",
+      "releaseType": "release"
     },
     "files": [
       "app/**/*",
