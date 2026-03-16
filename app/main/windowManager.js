@@ -1,0 +1,162 @@
+'use strict';
+
+/**
+ * windowManager.js
+ *
+ * Responsible for creating and managing the main BrowserWindow.
+ * Persists window state (size, position, maximized) via electron-store
+ * so the window reopens in the same place across launches.
+ *
+ * Security model:
+ *   - contextIsolation + sandbox prevent renderer from accessing Node APIs
+ *   - Navigation is restricted to YouTube Music and Google auth domains
+ *   - New-window requests for auth flows open inside the app; all others
+ *     are blocked (handled by the caller if needed)
+ */
+
+const { BrowserWindow, screen, shell } = require('electron');
+const path = require('path');
+const Store = require('electron-store');
+
+/** The URL loaded by the main window. */
+const YOUTUBE_MUSIC_URL = 'https://music.youtube.com';
+
+/**
+ * Domains that the renderer is allowed to navigate to.
+ * Covers YouTube Music itself and the Google OAuth / login flow.
+ */
+const ALLOWED_NAVIGATION_HOSTS = [
+  'music.youtube.com',
+  'www.youtube.com',
+  'youtube.com',
+  'accounts.google.com',
+  'accounts.youtube.com',
+  'myaccount.google.com',
+  'google.com',
+];
+
+/** Persistent store for window state. */
+const store = new Store({
+  name: 'window-state',
+  defaults: {
+    windowState: {
+      width: 1280,
+      height: 800,
+      x: undefined,
+      y: undefined,
+      maximized: false,
+    },
+  },
+});
+
+/**
+ * Returns true if the saved window bounds fall within at least one
+ * connected display.  Prevents the window from opening off-screen when
+ * monitors change between sessions.
+ *
+ * @param {{ x: number|undefined, y: number|undefined, width: number, height: number }} state
+ * @returns {boolean}
+ */
+function isStateOnScreen(state) {
+  if (state.x === undefined || state.y === undefined) return false;
+
+  return screen.getAllDisplays().some(({ bounds }) => (
+    state.x >= bounds.x &&
+    state.y >= bounds.y &&
+    state.x + state.width <= bounds.x + bounds.width &&
+    state.y + state.height <= bounds.y + bounds.height
+  ));
+}
+
+/**
+ * Creates (or recreates) the main application window.
+ * Restores the last saved size and position when available.
+ *
+ * @returns {BrowserWindow}
+ */
+function createMainWindow() {
+  const saved = store.get('windowState');
+  const restorePosition = isStateOnScreen(saved);
+
+  const win = new BrowserWindow({
+    width: saved.width,
+    height: saved.height,
+    ...(restorePosition ? { x: saved.x, y: saved.y } : {}),
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      // enableRemoteModule was removed in Electron 14+; kept explicit for clarity.
+      enableRemoteModule: false,
+    },
+  });
+
+  if (saved.maximized) {
+    win.maximize();
+  }
+
+  // Override the user-agent to remove the Electron identifier so that
+  // YouTube Music does not serve a degraded or blocked experience.
+  const chromeUA = win.webContents.getUserAgent()
+    .replace(/\s*Electron\/[\d.]+/, '');
+  win.webContents.setUserAgent(chromeUA);
+
+  /**
+   * Restrict in-page navigation to allowed hosts.
+   * This covers standard link clicks and JS-driven location changes.
+   */
+  win.webContents.on('will-navigate', (event, url) => {
+    try {
+      const { hostname } = new URL(url);
+      if (!ALLOWED_NAVIGATION_HOSTS.includes(hostname)) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    } catch {
+      event.preventDefault();
+    }
+  });
+
+  /**
+   * Handle window.open() calls (e.g. Google OAuth popup).
+   * Auth-related hosts open inside the app; everything else goes to the
+   * system browser.
+   */
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const { hostname } = new URL(url);
+      if (ALLOWED_NAVIGATION_HOSTS.includes(hostname)) {
+        return { action: 'allow' };
+      }
+    } catch {
+      // malformed URL — block it
+    }
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  /**
+   * Persist window state just before the window closes.
+   * We use getNormalBounds() so we save the restored size even if
+   * the window is maximised at close time.
+   */
+  win.on('close', () => {
+    const isMaximized = win.isMaximized();
+    const bounds = win.getNormalBounds();
+
+    store.set('windowState', {
+      width: bounds.width,
+      height: bounds.height,
+      x: bounds.x,
+      y: bounds.y,
+      maximized: isMaximized,
+    });
+  });
+
+  win.loadURL(YOUTUBE_MUSIC_URL);
+
+  return win;
+}
+
+module.exports = { createMainWindow };
