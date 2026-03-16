@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat \"/c/Users/Gioix/OneDrive/Desktop/Progetti/YouTube-Music-Desktop/.github/workflows\"/*)"
+      "Bash(cat \"/c/Users/Gioix/OneDrive/Desktop/Progetti/YouTube-Music-Desktop/.github/workflows\"/*)",
+      "Bash(powershell -Command \":*)"
     ]
   }
 }
