@@ -1,435 +1,393 @@
 {
-  "project": "TobaccoManagement",
-  "branchName": "1.1.8",
-  "description": "Integrazione Assistente IA nel gestionale tabacchi: pannello chat sul Dashboard con supporto multi-provider (Groq gratuito, Claude Haiku a pagamento, Modello locale GGUF senza API key), configurazione credenziali sicura via DPAPI, context-aware con dati reali del negozio.",
+  "project": "YouTubeMusicDesktop",
+  "branchName": "ralph/ytm-desktop-1-0-0",
+  "description": "Implementazione completa della versione 1.0.0 di YouTube Music Desktop: core Electron app, player integrato, controlli multimediali, tray, mini player, temi, persistenza configurazioni, auto-update, hardening sicurezza, performance, packaging e distribuzione.",
   "userStories": [
     {
-      "id": "US-026",
-      "title": "IA: Service layer multi-provider (Groq e Claude Haiku)",
-      "description": "Come sviluppatore, voglio un service layer pulito che astragga il provider IA (Groq o Claude Haiku) dietro un'unica interfaccia IAgentService, in modo che il resto dell'applicazione non dipenda da un provider specifico.",
+      "id": "US-001",
+      "title": "Bootstrap progetto Electron con struttura base",
+      "description": "Come sviluppatore, voglio inizializzare il progetto Electron con una struttura di base e gli script npm necessari, in modo da poter avviare l'app desktop da riga di comando.",
       "acceptanceCriteria": [
-        "Creata interfaccia IAgentService in Application/Services: Task<string> SendMessageAsync(string userMessage, AgentContext context, CancellationToken ct)",
-        "Creato record AgentContext in Application/Services: string ShopName, int ProdottiSottoscortaCount, List<string> ProdottiSottoscortaNomi (top 5), decimal VenditeOggiTotale, int OrdiniPendentiCount, DateTime DataOra",
-        "Creato enum AgentProvider in Application/Services: Groq, ClaudeHaiku",
-        "Creato GroqAgentService in Infrastructure/Services: POST https://api.groq.com/openai/v1/chat/completions con header Authorization: Bearer {apiKey}, body { model: 'llama-3.3-70b-versatile', messages: [{role:'system',...},{role:'user',...}], max_tokens: 512 }",
-        "Creato ClaudeHaikuAgentService in Infrastructure/Services: POST https://api.anthropic.com/v1/messages con headers x-api-key: {apiKey} e anthropic-version: 2023-06-01, body { model: 'claude-haiku-4-5-20251001', max_tokens: 512, system: ..., messages: [{role:'user',...}] }",
-        "System prompt in italiano: 'Sei un assistente per la tabaccheria {ShopName}. Rispondi in italiano, in modo conciso. Dati aggiornati al {DataOra}: {N} prodotti sottoscorta ({nomi}), vendite oggi €{totale}, {N} ordini pendenti.'",
-        "Creato AgentServiceFactory in Infrastructure/Services: legge IAgentSettingsService e restituisce GroqAgentService o ClaudeHaikuAgentService in base al Provider configurato",
-        "Se API key vuota o null: lancia AgentNotConfiguredException (custom exception in Application/Exceptions)",
-        "Se chiamata HTTP fallisce (timeout, 401, 429, 5xx): lancia AgentApiException con messaggio leggibile",
-        "Entrambi i service registrati in DI come Transient; AgentServiceFactory come Singleton",
-        "Build passa senza errori"
+        "Esiste un file package.json nella root con nome 'youtube-music-desktop' o equivalente, dipendenza 'electron' (versione 28+), e script npm: 'start', 'build', 'dist'",
+        "Lo script 'start' avvia Electron puntando al file main process (es. app/main/main.js)",
+        "Lo script 'build' esegue un build mode sviluppo o verifica lint/packager senza errori",
+        "La struttura di cartelle base è creata: app/main/, app/preload/, app/renderer/, assets/, config/",
+        "Eseguendo 'npm install' seguito da 'npm run start' si apre una finestra Electron vuota o con placeholder senza errori in console",
+        "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Implementato in Infrastructure/Services (non Application/Services) per rispettare la gerarchia delle dipendenze del progetto. IAgentSettingsService e AgentSettingsService creati anticipatamente come parte di questa US per permettere al factory di funzionare."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-027",
-      "title": "IA: Settings service con DPAPI per API key cifrate",
-      "description": "Come gestore, voglio che le API key (Groq o Anthropic) siano salvate in modo sicuro sul PC, cifrate con DPAPI, esattamente come avviene per le credenziali AdE.",
+      "id": "US-002",
+      "title": "Separazione main, preload e renderer con entry point dedicati",
+      "description": "Come sviluppatore, voglio separare chiaramente il codice del processo principale, del preload e del renderer in cartelle dedicate, in modo da rispettare le buone pratiche di sicurezza Electron.",
       "acceptanceCriteria": [
-        "Creato IAgentSettingsService in Application/Services: Task<AgentSettings> LoadSettingsAsync(), Task SaveSettingsAsync(AgentSettings settings), bool HasValidConfiguration()",
-        "Creato AgentSettings record: AgentProvider Provider, string GroqApiKey, string AnthropicApiKey, bool IsEnabled",
-        "Creato AgentSettingsService in Infrastructure/Services: cifra/decifra con ProtectedData.Protect/Unprotect (DataProtectionScope.CurrentUser), file salvato in AppData\\Local\\GestionaleTabacchi\\agent_settings.dat",
-        "HasValidConfiguration() ritorna true se IsEnabled && Provider == Groq && GroqApiKey non vuota, oppure IsEnabled && Provider == ClaudeHaiku && AnthropicApiKey non vuota",
-        "Se il file non esiste: LoadSettingsAsync() ritorna AgentSettings con IsEnabled=false senza eccezioni",
-        "Registrato in DI come Singleton (stesso pattern di AdESettingsService)",
-        "Build passa senza errori"
+        "In app/main/ esiste un file main.js (o .ts) che e l'entry del main process",
+        "In app/preload/ esiste un file preload.js (o .ts) registrato in BrowserWindow.webPreferences.preload",
+        "In app/renderer/ esiste un file index.html caricato dal main process e, se necessario, un file ui.js associato",
+        "Il main process non include codice UI diretto: carica solo index.html e configura la finestra",
+        "Il preload non espone API non necessarie: per ora puo essere un bridge minimo o vuoto ma correttamente collegato",
+        "Eseguendo 'npm run start' l'app si avvia e carica index.html dal percorso renderer senza errori",
+        "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Già implementato come parte di US-026. IAgentSettingsService e AgentSettingsService in Infrastructure/Services con cifratura DPAPI, file in AppData\\Local\\GestionaleTabacchi\\agent_settings.dat, registrato come Singleton in DI."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-028",
-      "title": "IA: AgentViewModel con chat MVVM e context builder",
-      "description": "Come sviluppatore, voglio un AgentViewModel completo che gestisca la lista messaggi, il comando di invio, lo stato di caricamento e la costruzione del contesto dati reali dal database.",
+      "id": "US-003",
+      "title": "WindowManager con salvataggio stato finestra",
+      "description": "Come utente, voglio che la finestra principale dell'app YouTube Music Desktop ricordi dimensioni e posizione tra un avvio e l'altro, in modo da non doverla ridimensionare ogni volta.",
       "acceptanceCriteria": [
-        "Creato ChatMessageViewModel in ViewModels: string Content, bool IsUserMessage, DateTime Timestamp",
-        "Creato AgentViewModel in ViewModels: ObservableCollection<ChatMessageViewModel> Messages, string CurrentInput, bool IsLoading, bool IsConfigured, IAsyncRelayCommand SendCommand",
-        "SendCommand: aggiunge messaggio utente a Messages → imposta IsLoading=true → chiama BuildContextAsync() → chiama IAgentService.SendMessageAsync() → aggiunge risposta IA a Messages → IsLoading=false",
-        "BuildContextAsync(): interroga IReportingService per VenditeOggiTotale, IStockMovementService o ITobaccoProductRepository per ProdottiSottoscortaCount e top 5 nomi, ILogistaOrderRepository per OrdiniPendentiCount (stati Confermato+InTransito), IShopProfileRepository per ShopName",
-        "Se AgentNotConfiguredException: IsConfigured=false, nessun errore non gestito",
-        "Se AgentApiException: aggiunge messaggio di errore in chat come risposta IA con testo leggibile (es. 'Errore di connessione: verifica la tua connessione internet.')",
-        "Proprietà IsConfigured aggiornata a ogni apertura del Dashboard chiamando IAgentSettingsService.HasValidConfiguration()",
-        "AgentViewModel registrato in DI come Transient",
-        "Build passa senza errori"
+        "Creato modulo app/main/windowManager.js che esporta almeno una funzione createMainWindow()",
+        "Integrato electron-store (o equivalente) per salvare un oggetto windowState con width, height, x, y, maximized",
+        "Al primo avvio, la finestra principale usa dimensioni di default (es. 1280x800, centrata)",
+        "Alla chiusura o prima dell'uscita, lo stato della finestra (dimensioni e posizione correnti) viene salvato in store",
+        "Al secondo avvio, la finestra si apre con le stesse dimensioni e posizione salvate (salvo casi edge tipo schermo non disponibile)",
+        "Il main process usa windowManager.createMainWindow() come entry per creare la BrowserWindow principale",
+        "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Creato ChatMessageViewModel.cs e AgentViewModel.cs in ViewModels. AgentViewModel gestisce Messages (ObservableCollection), CurrentInput, IsLoading, IsConfigured e SendCommand. BuildContextAsync() interroga IReportingService, ITobaccoProductRepository, ILogistaOrderRepository e IShopProfileRepository. Gestione errori AgentNotConfiguredException e AgentApiException con messaggi user-friendly in italiano. Registrato in DI come Transient."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-029",
-      "title": "UI Desktop: AgentView pannello chat nel Dashboard",
-      "description": "Come gestore, voglio vedere un pannello chat sul lato destro del Dashboard da cui posso fare domande sul mio negozio in linguaggio naturale, senza navigare in altre sezioni.",
+      "id": "US-004",
+      "title": "BrowserWrapper sicuro per caricare YouTube Music",
+      "description": "Come utente, voglio che l'app carichi il sito https://music.youtube.com in una finestra sicura, cosicche io possa usare YouTube Music come in browser ma con protezioni Electron appropriate.",
       "acceptanceCriteria": [
-        "Creato AgentView.xaml come UserControl in Views/",
-        "Layout verticale: header 'Assistente IA', ScrollViewer con lista ChatMessageViewModel (bubble destra per utente, bolla sinistra per IA), TextBox input + Button 'Invia' in basso",
-        "Messaggi utente: allineati a destra, sfondo accent color; messaggi IA: allineati a sinistra, sfondo card secondario — coerenti con il tema dark dell'app",
-        "Stato non configurato (IsConfigured=false): mostra banner giallo con testo 'Assistente IA non configurato.' e Button 'Configura' che apre AgentSettingsDialog",
-        "Stato caricamento (IsLoading=true): mostra spinner inline sotto l'ultimo messaggio, TextBox e Button disabilitati",
-        "Messaggio placeholder nel TextBox: 'Scrivi una domanda sul tuo negozio...'",
-        "ScrollViewer auto-scroll al fondo ad ogni nuovo messaggio",
-        "DashboardView.xaml modificato: aggiunta colonna destra fissa 320px con AgentView; colonna principale ridimensionata di conseguenza",
-        "DashboardViewModel.cs modificato: inietta AgentViewModel e lo espone come proprietà AgentVm { get; }",
-        "Build passa senza errori"
+        "La BrowserWindow principale viene configurata per caricare l'URL esatto 'https://music.youtube.com'",
+        "Le webPreferences della BrowserWindow includono: contextIsolation: true, sandbox: true, nodeIntegration: false, enableRemoteModule: false",
+        "Il file preload configurato e esistente viene passato tramite webPreferences.preload con percorso assoluto corretto",
+        "Non ci sono errori visibili in console legati a mancato caricamento dell'URL principale",
+        "Eventuali errori di certificato o redirect sono gestiti lasciando completare il login YouTube Music standard",
+        "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Creato AgentView.xaml e AgentView.xaml.cs in Views/. Layout verticale con header blu 'Assistente IA', ScrollViewer con messaggi (bubble destra arancione per utente, bubble sinistra bianca per IA), TextBox con placeholder e Button 'Invia'. Banner giallo quando IsConfigured=false con pulsante 'Configura'. Spinner animato con tre dots quando IsLoading=true. Auto-scroll al fondo implementato via CollectionChanged su Messages. DashboardView.xaml modificato con Grid a due colonne (principale + 320px per AgentView). DashboardViewModel.cs: aggiunto parametro AgentViewModel nel costruttore e proprietà AgentVm { get; }. Build passa con 0 errori."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-030",
-      "title": "UI Desktop: Dialog configurazione provider e API key",
-      "description": "Come gestore, voglio poter scegliere se usare Groq (gratuito) o Claude Haiku (a pagamento), inserire la relativa API key e testare la connessione prima di salvare.",
+      "id": "US-005",
+      "title": "Gestione navigazione esterna e CSP base",
+      "description": "Come utente, voglio che eventuali link esterni aperti da YouTube Music vengano gestiti nel browser di sistema, e che l'app limiti le origini caricate ai domini di YouTube Music, per maggiore sicurezza.",
       "acceptanceCriteria": [
-        "Creato AgentSettingsDialog.xaml/.cs in Views/Dialogs",
-        "RadioButton 'Groq (Gratuito)' e RadioButton 'Claude Haiku (A pagamento)' per selezione provider",
-        "Quando Groq selezionato: PasswordBox GroqApiKey con pulsante toggle Show/Hide, TextBlock link 'Ottieni la tua API key gratuita su console.groq.com' cliccabile (Process.Start)",
-        "Quando Claude Haiku selezionato: PasswordBox AnthropicApiKey con pulsante toggle Show/Hide, TextBlock link 'Ottieni su console.anthropic.com' cliccabile (Process.Start)",
-        "CheckBox 'Abilita assistente IA' — se deselezionato, IsEnabled=false e il pannello chat mostra stato non configurato",
-        "Button 'Test Connessione': invia messaggio di test 'Rispondi solo con OK.' con AgentContext vuoto, mostra 'Connessione riuscita' in verde o errore in rosso, spinner durante il test",
-        "Button 'Salva' abilitato solo se CheckBox disabilitato oppure API key del provider selezionato non vuota; salva via IAgentSettingsService.SaveSettingsAsync() e chiude con DialogResult=true",
-        "Button 'Annulla' chiude senza salvare",
-        "Aggiunta voce 'Assistente IA → Impostazioni...' nel gruppo Settings della sidebar MainWindow che apre AgentSettingsDialog",
-        "Dopo salvataggio, AgentViewModel.IsConfigured viene rivalutato (evento o chiamata diretta)",
-        "Build passa senza errori"
+        "Nel main process viene registrato un handler per gli eventi 'will-navigate' e/o 'web-contents-created' che intercetta navigazioni verso domini non whitelist",
+        "I domini consentiti includono almeno music.youtube.com, youtube.com, google.com, accounts.google.com e altri host necessari al corretto funzionamento di YouTube Music",
+        "Per i domini non whitelist, l'URL viene aperto nel browser di sistema tramite shell.openExternal (o API equivalente) invece che nella finestra integrata",
+        "Implementata una CSP base (es. tramite header o meta) che limita default-src/script-src principalmente a 'self' e ai domini YouTube Music/Google",
+        "Test manuale: cliccando su un link esterno (es. link a privacy policy) questo si apre nel browser di sistema e non rompe l'app",
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Creato AgentSettingsDialog.xaml e AgentSettingsDialog.xaml.cs in Views/Dialogs. Layout con header, RadioButton per selezione provider (Groq con badge verde 'Gratuito', Claude Haiku con badge arancione 'A pagamento'), PasswordBox con toggle Show/Hide per ogni API key, link cliccabili a console.groq.com e console.anthropic.com, CheckBox 'Abilita assistente IA', Button 'Test Connessione' con gestione spinner e feedback successo/errore, Button 'Salva' abilitato condizionalmente, Button 'Annulla'. Aggiunto gruppo 'ASSISTENTE IA' nella sidebar MainWindow.xaml con voce 'Impostazioni'. Aggiunto OpenAgentSettingsCommand in MainViewModel.cs. Registrato AgentSettingsDialog in DI come Transient in App.xaml.cs. Aggiornato AgentView.xaml.cs per aprire il dialog reale invece del placeholder. Dopo salvataggio, AgentViewModel.RefreshConfigurationStatus() viene chiamato. Build passa con 0 errori."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-032",
-      "title": "Suggerimenti Ordine: agenda ordine/consegna e analisi storico ordini",
-      "description": "Come gestore, voglio che i suggerimenti di riordino tengano conto del giorno in cui faccio l'ordine e del giorno in cui arriva la merce, e che l'algoritmo sfrutti lo storico degli ordini passati per auto-rilevare questi parametri, calcolare il lead time reale e mostrare le quantità storicamente ordinate per prodotto.",
+      "id": "US-006",
+      "title": "Modulo mediaController per comandi player",
+      "description": "Come sviluppatore, voglio un modulo mediaController che invii comandi play/pause/next/previous al player YouTube Music dal main process, in modo da poter integrare controlli multimediali globali.",
       "acceptanceCriteria": [
-        "Creato OrderScheduleSettings in Application/Services: DayOfWeek OrderDayOfWeek (default Monday), DayOfWeek DeliveryDayOfWeek (default Wednesday), bool AutoDetectedFromHistory",
-        "Creata interfaccia IOrderScheduleSettingsService in Application/Services: Task<OrderScheduleSettings> LoadAsync(), Task SaveAsync(OrderScheduleSettings settings)",
-        "Creato OrderScheduleSettingsService in Infrastructure/Services: persistenza JSON in %LocalAppData%/GestionaleTabacchi/order_schedule_settings.json, stesso pattern di UpdateSettings già esistente; se file assente ritorna defaults senza eccezioni",
-        "Creata interfaccia IOrderHistoryAnalysisService in Application/Services con metodi: Task<OrderScheduleDetectionResult> DetectOrderScheduleAsync(int minOrders = 5) e Task<ProductOrderHistoryResult> GetProductOrderHistoryAsync(int productId, int lastNOrders = 10)",
-        "OrderScheduleDetectionResult record: DayOfWeek? DetectedOrderDay, DayOfWeek? DetectedDeliveryDay, int? AverageLeadTimeDays, int SampleSize — tutti nullable se dati insufficienti",
-        "ProductOrderHistoryResult record: int ProductId, decimal AverageQuantityOrdered, decimal LastQuantityOrdered, int OrderCount, DateTime? LastOrderDate",
-        "Creato OrderHistoryAnalysisService in Infrastructure/Services: DetectOrderScheduleAsync carica ultimi N ordini con Status=Delivered e ActualDeliveryDate!=null tramite ILogistaOrderRepository, estrae la moda del DayOfWeek da ConfirmedAt (giorno ordine) e da ActualDeliveryDate (giorno consegna), calcola media (ActualDeliveryDate-ConfirmedAt).TotalDays come lead time reale; se SampleSize < minOrders ritorna nulls",
-        "GetProductOrderHistoryAsync: query LogistaOrderItems filtrati per ProductId, ordinati per Order.CreatedAt desc, top lastNOrders; calcola media QuantityInCartons, restituisce ultimo valore e data",
-        "OrderSuggestion model (Domain/Models): aggiunte proprietà decimal? HistoricalAvgOrderedCartons, decimal? LastOrderedCartons, DateTime? LastOrderDate, int? HistoricalOrderCount",
-        "OrderSuggestionService aggiornato: inietta IOrderHistoryAnalysisService e IOrderScheduleSettingsService; all'inizio di GenerateSuggestionsAsync carica OrderScheduleSettings e chiama DetectOrderScheduleAsync per ottenere AverageLeadTimeDays reale",
-        "Helper statico in OrderSuggestionService: CalculateDaysUntilNextDelivery(DateTime today, DayOfWeek orderDay, DayOfWeek deliveryDay) → int; logica: daysUntilOrder=((int)orderDay-(int)today.DayOfWeek+7)%7, nextOrder=today.AddDays(daysUntilOrder), daysOrderToDelivery=((int)deliveryDay-(int)orderDay+7)%7 (min 1 se zero), ritorna Max(1, (nextOrder.AddDays(daysOrderToDelivery)-today).Days)",
-        "effectiveLeadTimeDays = AverageLeadTimeDays da storico se disponibile, altrimenti CalculateDaysUntilNextDelivery; sostituisce product.LeadTimeDays nella chiamata a SafetyStockCalculationService.CalculateReorderPoint()",
-        "DeterminePriority aggiornato con parametro int daysUntilDelivery: CRITICO(5) se daysOfStock<daysUntilDelivery, URGENTE(4) se daysOfStock<daysUntilDelivery+2 o sotto scorta min, ALTA(3) se daysOfStock<daysUntilDelivery+7, MEDIA(2) se daysOfStock<daysUntilDelivery+14, BASSA(1) altrimenti",
-        "Per ogni prodotto in GenerateSuggestionsAsync: chiama GetProductOrderHistoryAsync e popola i campi HistoricalAvgOrderedCartons, LastOrderedCartons, LastOrderDate, HistoricalOrderCount nel modello OrderSuggestion",
-        "IOrderScheduleSettingsService registrato in DI come Singleton; IOrderHistoryAnalysisService come Scoped in App.xaml.cs",
-        "Build passa senza errori"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Implementato in Infrastructure/Services (non Application/Services) per rispettare la gerarchia delle dipendenze del progetto. Creati: IOrderScheduleSettingsService e OrderScheduleSettingsService (persistenza JSON in %LocalAppData%/GestionaleTabacchi/order_schedule_settings.json), IOrderHistoryAnalysisService e OrderHistoryAnalysisService (analisi storico ordini per rilevare giorni ordine/consegna e lead time), OrderScheduleDetectionResult e ProductOrderHistoryResult record. Aggiornato OrderSuggestion model con HistoricalAvgOrderedCartons, LastOrderedCartons, LastOrderDate, HistoricalOrderCount. OrderSuggestionService aggiornato con iniezione dei nuovi servizi, metodo statico CalculateDaysUntilNextDelivery, DeterminePriority aggiornato con parametro daysUntilDelivery per priorità basata sulla prossima consegna. Build passa con 0 errori."
-    },
-    {
-      "id": "US-033",
-      "title": "UI Suggerimenti Ordine: configurazione agenda e dati storici su card prodotto",
-      "description": "Come gestore, voglio poter configurare (o vedere auto-rilevati) il giorno in cui faccio l'ordine e il giorno di consegna, vedere la label 'Prossima consegna tra X gg', e su ogni card prodotto vedere l'ultima quantità storicamente ordinata.",
-      "acceptanceCriteria": [
-        "OrderSuggestionViewModel: inietta IOrderScheduleSettingsService e IOrderHistoryAnalysisService; ObservableProperty OrderDayOfWeek e DeliveryDayOfWeek (DayOfWeek); proprietà calcolata string NextDeliveryLabel es. 'Prossima consegna: mercoledì (tra 3 gg)'",
-        "All'inizializzazione del ViewModel: se order_schedule_settings.json non esiste, chiama DetectOrderScheduleAsync(); se SampleSize >= 5 pre-popola OrderDayOfWeek e DeliveryDayOfWeek dai valori rilevati e imposta AutoDetectedFromHistory=true, poi salva le settings",
-        "OrderSuggestionViewModel espone bool ScheduleAutoDetected per mostrare banner informativo",
-        "OrderSuggestionItemViewModel: nuove proprietà string HistoricalOrderLabel (es. 'Ultima volta: 3 stecche — 15/01/2025' oppure 'Mai ordinato' se OrderCount=0), bool HasOrderHistory",
-        "View XAML (OrderSuggestion o CreateLogistaOrder): aggiunta sezione configurazione agenda con due ComboBox (Giorno ordine, Giorno consegna) popolati con giorni settimana in italiano (Lunedì…Domenica) e Label NextDeliveryLabel; valori salvati via SaveAsync() al cambio selezione",
-        "Banner informativo visibile se ScheduleAutoDetected=true con testo 'Giorni rilevati automaticamente dallo storico ordini' e pulsante per resettare alla configurazione manuale",
-        "Su ogni card prodotto: riga aggiuntiva con HistoricalOrderLabel in grigio sotto la riga 'Ordina X stecche'",
-        "Build passa senza errori"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Aggiornato OrderSuggestionViewModel: inietta IOrderScheduleSettingsService e IOrderHistoryAnalysisService, aggiunge ObservableProperty OrderDayOfWeek e DeliveryDayOfWeek, proprietà calcolata NextDeliveryLabel (es. 'Prossima consegna: mercoledì (tra 3 gg)'), metodo InitializeScheduleSettingsAsync() che rileva automaticamente i giorni se SampleSize >= 5, ScheduleAutoDetected per banner informativo, DaysOfWeekItems lista statica per ComboBox con nomi italiani. Aggiornato OrderSuggestionItemViewModel con HistoricalOrderLabel (es. 'Ultima volta: 3 stecche — 15/01/2025' o 'Mai ordinato') e HasOrderHistory. Aggiornato CreateLogistaOrderView.xaml: sezione configurazione agenda con ComboBox per giorni settimana, banner auto-rilevamento arancione con pulsante reset, label NextDeliveryLabel in blu, HistoricalOrderLabel in grigio italico sotto ogni suggerimento. CreateLogistaOrderViewModel.LoadSuggestionsAsync chiama InitializeScheduleSettingsAsync. Build passa con 0 errori."
-    },
-    {
-      "id": "US-031",
-      "title": "UI Desktop: Modernizzazione stile ScrollBar e DataGrid",
-      "description": "Come utente, voglio un'interfaccia più moderna e pulita per le tabelle (DataGrid) e le barre di scorrimento (ScrollBar), per superare l'attuale aspetto 'retrò'.",
-      "acceptanceCriteria": [
-        "Aggiunto nuovo ControlTemplate per ScrollBar con stile 'flat', senza frecce direzionali e con Thumb arrotondato (stile Mac).",
-        "Implementate animazioni di hover (cambio colore/opacità) per il Thumb della ScrollBar.",
-        "Modificato DataGridStyles.xaml per rimuovere il FocusVisualStyle (elimina il fastidioso bordo tratteggiato al click).",
-        "Aggiunto CornerRadius globale al bordo esterno del DataGrid per un design più morbido.",
-        "Migliorato l'aspetto degli Header delle colonne (DataGridColumnHeader) con design più pulito e icone di ordinamento integrate meglio.",
-        "I nuovi stili sono perfettamente integrati nei ResourceDictionary e testati in visualizzazione."
+        "Creato modulo app/main/mediaController.js con funzioni play(), pause(), togglePlay(), nextTrack(), previousTrack()",
+        "Le funzioni usano webContents della finestra principale per eseguire JavaScript nel renderer (es. webContents.executeJavaScript) che controlla il player YouTube Music",
+        "Il codice JS iniettato viene isolato in una funzione chiara e non rompe la pagina in caso di cambiamenti minori del DOM",
+        "Sono gestiti eventuali errori (es. nessuna finestra, contenuto non ancora pronto) con log non bloccanti",
+        "Test manuale: tramite una chiamata temporanea dal main process, i comandi influenzano effettivamente la riproduzione",
+        "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Creato ScrollBarStyles.xaml in Themes/Controls con stile Mac-like: Thumb arrotondato (CornerRadius 4), colori definiti (normale #C0C0C0, hover #A0A0A0, pressed #808080), nessuna freccia direzionale, track trasparente che mostra sfondo grigio chiaro su hover. Aggiornato DataGridStyles.xaml: aggiunto DataGridNoFocusVisual per rimuovere bordo tratteggiato su focus, aggiunto ControlTemplate per DataGrid con CornerRadius 8 e ScrollBar moderne integrate, migliorato DataGridColumnHeader con icone chevron per ordinamento (su/giu con stroke 2px), aggiunto gripper per resize colonne, rimosso FocusVisualStyle da Row e Cell. Aggiornato AppTheme.xaml per includere ScrollBarStyles.xaml e applicare ModernScrollBarStyle globalmente. Build passa con 0 errori."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-035",
-      "title": "Sistema Rollback: ripristino versione precedente da GitHub",
-      "description": "Come gestore, voglio poter tornare alla versione stabile precedente dell'applicazione se dopo un aggiornamento riscontro problemi, senza dover conservare backup locali.",
+      "id": "US-007",
+      "title": "Integrazione MediaSession API per controlli di sistema",
+      "description": "Come utente, voglio che i controlli multimediali del sistema (tasti media, overlay Windows) controllino la riproduzione di YouTube Music.",
       "acceptanceCriteria": [
-        "UpdateSettings aggiornato: aggiunta proprietà string? PreviousVersion serializzata in update_settings.json come 'previousVersion'",
-        "IUpdateService aggiornato: firma ApplyUpdateAndRestartAsync cambiata in Task ApplyUpdateAndRestartAsync(string downloadedFilePath, bool isRollback = false) — default value garantisce retrocompatibilità con i chiamanti esistenti",
-        "IUpdateService aggiornato: aggiunto metodo Task<UpdateInfo?> GetRollbackInfoAsync(string version, CancellationToken cancellationToken = default) che recupera la release GitHub per il tag specificato tramite GET /repos/{owner}/{repo}/releases/tags/v{version}",
-        "UpdateService.ApplyUpdateAndRestartAsync: se !isRollback, salva GetCurrentVersion().ToString(3) come PreviousVersion nelle settings prima di lanciare lo script PowerShell; se isRollback, azzera PreviousVersion nelle settings DOPO Process.Start (per non perdere l'info se UAC viene annullato)",
-        "UpdateService.GetRollbackInfoAsync: riusa autenticazione PAT DPAPI e parsing asset .exe/.sha256 già presenti in CheckForUpdateAsync; restituisce null se la release non esiste (404), se non contiene .exe, o in caso di errori HTTP/JSON/cancellazione",
-        "AboutDialog: aggiunta sezione RollbackSection (Border arancione, Visibility=Collapsed di default) con TxtRollbackInfo, RollbackProgressSection (con progress bar inline), e BtnRollback 'Ripristina versione precedente'",
-        "AboutDialog: altezza finestra aumentata da 620 a 680 per evitare clipping quando RollbackSection è visibile",
-        "AboutDialog.xaml.cs: aggiunto parametro IUpdateService nel costruttore; LoadRollbackInfoAsync() fire-and-forget che legge settings e mostra RollbackSection se PreviousVersion != null",
-        "AboutDialog.xaml.cs: BtnRollback_Click esegue: conferma MessageBox → mostra progress → GetRollbackInfoAsync → DownloadUpdateAsync con progress bar → ApplyUpdateAndRestartAsync(isRollback: true); gestisce errori con messaggio all'utente e riabilita il bottone",
-        "AboutDialog.xaml.cs: OnClosing cancella CancellationTokenSource se rollback in corso (stesso pattern di UpdateAvailableDialog)",
-        "MainViewModel.cs ShowAboutAsync: risolve IUpdateService da DI e lo passa come 4° argomento al costruttore di AboutDialog",
-        "Dopo rollback completato: AboutDialog mostra sezione rollback assente al prossimo avvio (PreviousVersion = null)",
-        "Build passa senza errori"
+        "Implementata integrazione con MediaSession API (via Electron) per esporre play/pause/next/previous al sistema operativo",
+        "Registrati gli handler MediaSession per inoltrare i comandi al mediaController",
+        "Verificato che i tasti media hardware (play/pause/next/previous) comandino il player quando l'app è in primo piano",
+        "Il comportamento è coerente anche quando l'app è in background ma ancora aperta",
+        "Typecheck passes"
       ],
-      "priority": 10,
-      "passes": true,
-      "notes": "Implementato completamente. UpdateSettings aggiornato con PreviousVersion (persistito in update_settings.json). IUpdateService aggiornato con ApplyUpdateAndRestartAsync(isRollback) e GetRollbackInfoAsync. UpdateService.ApplyUpdateAndRestartAsync: se !isRollback salva versione corrente come PreviousVersion prima dello script PowerShell; se isRollback azzera PreviousVersion DOPO Process.Start. GetRollbackInfoAsync: GET /repos/{owner}/{repo}/releases/tags/v{version} con autenticazione PAT DPAPI, parsing asset .exe/.sha256, ritorna null se release non esiste o senza .exe. AboutDialog aggiornato: altezza 680px, RollbackSection (Border arancione), TxtRollbackInfo, RollbackProgressSection con ProgressBar, BtnRollback. AboutDialog.xaml.cs: aggiunto IUpdateService nel costruttore, LoadRollbackInfoAsync fire-and-forget, BtnRollback_Click con conferma MessageBox, progress download, ApplyUpdateAndRestartAsync(isRollback:true), OnClosing con cancellazione CancellationTokenSource. MainViewModel.ShowAboutAsync risolve IUpdateService e lo passa al costruttore. Build passa con 0 errori."
+      "priority": 7,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-036",
-      "title": "SK: Migrazione infrastruttura AI su Semantic Kernel",
-      "description": "Come sviluppatore, voglio sostituire il layer AI custom (chiamate HTTP manuali, factory pattern) con Microsoft Semantic Kernel come orchestratore unificato, in modo da avere un'astrazione provider pulita e predisposta per function calling.",
+      "id": "US-008",
+      "title": "Registrazione shortcut globali di default",
+      "description": "Come utente avanzato, voglio poter controllare la riproduzione con shortcut globali anche quando l'app non ha il focus.",
       "acceptanceCriteria": [
-        "Aggiunto NuGet package Microsoft.SemanticKernel (1.x) a TobaccoManagement.Infrastructure.csproj",
-        "Aggiunto NuGet package Microsoft.SemanticKernel.Connectors.Anthropic (alpha) a TobaccoManagement.Infrastructure.csproj per supporto Claude",
-        "Eliminati i file: IAgentService.cs, ClaudeHaikuAgentService.cs, GroqAgentService.cs, AgentServiceFactory.cs da Infrastructure/Services",
-        "Creata interfaccia IKernelService in Infrastructure/Services/AI: bool IsConfigured { get; }, Task<string> SendMessageAsync(ChatHistory chatHistory, string userMessage, CancellationToken ct), Task<bool> TestConnectionAsync(AgentProvider provider, string apiKey, CancellationToken ct)",
-        "Creato KernelService in Infrastructure/Services/AI che implementa IKernelService: costruisce Kernel via builder pattern; se Provider==Groq usa AddOpenAIChatCompletion con modelId='llama-3.3-70b-versatile' e BaseAddress='https://api.groq.com'; se Provider==ClaudeHaiku usa AddAnthropicChatCompletion con modelId='claude-haiku-4-5-20251001'",
-        "KernelService: registra ShopDataPlugin tramite builder.Plugins.AddFromObject(_shopDataPlugin, 'Negozio') prima di build",
-        "KernelService: cache del Kernel — ricostruisce l'istanza solo se le settings cambiano rispetto alla precedente build (confronto Provider + ApiKey)",
-        "KernelService.SendMessageAsync: chiama chatService.GetChatMessageContentAsync con FunctionChoiceBehavior.Auto() abilitato per consentire function calling automatico",
-        "KernelService.TestConnectionAsync: costruisce Kernel temporaneo con provider/apiKey forniti senza persistere, invia 'Rispondi solo con OK.', ritorna true se risposta non vuota; ritorna false (senza lanciare) in caso di errore",
-        "KernelService.IsConfigured: delega a IAgentSettingsService.HasValidConfiguration()",
-        "App.xaml.cs: rimossi AddTransient<GroqAgentService>, AddTransient<ClaudeHaikuAgentService>, AddSingleton<AgentServiceFactory>; aggiunti AddSingleton<ShopDataPlugin> e AddSingleton<IKernelService, KernelService>",
-        "IAgentSettingsService, AgentSettingsService, AgentSettings record e AgentProvider enum rimangono invariati",
-        "Build passa senza errori"
+        "Creato modulo app/main/shortcuts.js che registra gli shortcut globali tramite globalShortcut",
+        "Shortcut di default configurati: Ctrl+Alt+P (Play/Pause), Ctrl+Alt+N (Next), Ctrl+Alt+B (Previous), Ctrl+Alt+M (Toggle Mini Player), Ctrl+Alt+Y (Mostra/Nascondi App)",
+        "Gli handler degli shortcut chiamano le funzioni appropriate di mediaController e windowManager/miniPlayer",
+        "Alla chiusura dell'app, tutti gli shortcut sono deregistrati per evitare leak",
+        "Typecheck passes"
       ],
-      "priority": 11,
-      "passes": true,
-      "notes": "Implementato completamente. Aggiunto Microsoft.SemanticKernel (1.73.0) e Lost.SemanticKernel.Connectors.Anthropic (1.25.0-alpha3) a Infrastructure.csproj. Eliminati IAgentService.cs, ClaudeHaikuAgentService.cs, GroqAgentService.cs, AgentServiceFactory.cs da Infrastructure/Services. Creato IKernelService in Infrastructure/Services/AI con IsConfigured, SendMessageAsync(object chatHistory, string userMessage, CancellationToken), CreateChatHistory(), TestConnectionAsync(AgentProvider, string, CancellationToken). Creato KernelService in Desktop/Services/AI: costruisce Kernel via builder pattern, AddOpenAIChatCompletion per Groq (llama-3.3-70b-versatile, endpoint https://api.groq.com/openai/v1), AddAnthropicChatCompletion per Claude Haiku (claude-haiku-4-5-20251001). ShopDataPlugin registrato tramite kernel.Plugins.AddFromObject. Cache del kernel con SemaphoreSlim e confronto Provider+ApiKey. SendMessageAsync usa FunctionChoiceBehavior.Auto() per function calling automatico. TestConnectionAsync costruisce kernel temporaneo senza persistere. App.xaml.cs: registrati AddSingleton<ShopDataPlugin> e AddSingleton<IKernelService, KernelService>. AgentViewModel e AgentSettingsDialog aggiornati per usare IKernelService invece di AgentServiceFactory (modifica anticipata da US-038 per consentire build). Build passa con 0 errori."
+      "priority": 8,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-037",
-      "title": "SK: ShopDataPlugin con function calling per dati negozio",
-      "description": "Come sviluppatore, voglio un SK Plugin che esponga i dati del negozio come funzioni invocabili dall'AI, in modo che il modello possa recuperare autonomamente le informazioni necessarie invece di ricevere un dump statico di contesto.",
+      "id": "US-009",
+      "title": "Impostazione per abilitare/disabilitare gli shortcut globali",
+      "description": "Come utente, voglio poter abilitare o disabilitare gli shortcut globali in base alle mie preferenze, per evitare conflitti con altre applicazioni.",
       "acceptanceCriteria": [
-        "Creato ShopDataPlugin in Infrastructure/Services/AI/Plugins: classe con costruttore che inietta ITobaccoProductRepository, IReportingService, ILogistaOrderRepository, IShopProfileRepository",
-        "Implementata funzione [KernelFunction('get_low_stock_products')] [Description('Restituisce i prodotti tabacco con giacenza sotto la scorta minima')]: recupera tutti i prodotti, filtra Giacenza < ScortaMinima, ritorna stringa formattata con lista nomi e giacenza/minimo; se nessun prodotto ritorna 'Nessun prodotto sottoscorta'",
-        "Implementata funzione [KernelFunction('get_today_sales')] [Description('Restituisce le vendite totali di oggi in euro e il numero di transazioni')]: chiama IReportingService con intervallo DateTime.Today..DateTime.Today, ritorna stringa 'Vendite oggi: €{total:N2} ({count} transazioni)'",
-        "Implementata funzione [KernelFunction('get_pending_orders')] [Description('Restituisce il numero e dettagli degli ordini pendenti a Logista')]: recupera ordini con Status Confirmed o InTransit, ritorna stringa con count e lista ID/data",
-        "Implementata funzione [KernelFunction('get_shop_info')] [Description('Restituisce le informazioni generali del negozio')]: legge ShopProfile corrente, ritorna nome, P.IVA e codice ADM se disponibili",
-        "Implementata funzione [KernelFunction('get_top_products')] [Description('Restituisce i prodotti più venduti negli ultimi N giorni')] con parametri [Description] int days=30 e int top=10: chiama IReportingService per il periodo, ritorna lista ordinata per volume vendite",
-        "Tutte le funzioni sono async Task<string> e gestiscono eccezioni interne ritornando stringa di errore leggibile invece di propagare",
-        "ShopDataPlugin registrato in DI come Singleton (riusato da KernelService)",
-        "Build passa senza errori"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "Implementato in Desktop/Services/AI/Plugins (non Infrastructure) per rispettare la gerarchia delle dipendenze del progetto. ShopDataPlugin con costruttore che inietta ITobaccoProductRepository, IReportingService, ILogistaOrderRepository, IShopProfileRepository. Implementate tutte le funzioni: get_low_stock_products (filtra Giacenza < ScortaMinima, max 20 prodotti), get_today_sales (GenerateSalesReportAsync con TotalSalesCount), get_pending_orders (filtra Status Confirmed/InTransit, max 10 ordini), get_shop_info (NomeAttivita, PartitaIVA.Value, CodiceRivenditaADM), get_top_products (GetTopProductsAsync con ProductDescription). Tutte async Task<string> con try/catch che ritorna messaggio di errore leggibile. Registrato in DI come Singleton. Build passa con 0 errori."
-    },
-    {
-      "id": "US-038",
-      "title": "SK: AgentViewModel con ChatHistory multi-turn e pulsante Nuova Conversazione",
-      "description": "Come gestore, voglio che l'assistente AI ricordi i messaggi precedenti della sessione (conversazione multi-turn) e possa usare i dati del negozio tramite function calling, con la possibilità di resettare la conversazione.",
-      "acceptanceCriteria": [
-        "AgentViewModel: rimossa dipendenza da AgentServiceFactory, aggiunto IKernelService _kernelService come dipendenza costruttore",
-        "AgentViewModel: aggiunto campo privato ChatHistory _chatHistory inizializzato nel costruttore con system message in italiano: 'Sei un assistente intelligente per una tabaccheria italiana. Hai accesso a funzioni per recuperare dati in tempo reale dal gestionale: prodotti sottoscorta, vendite del giorno, ordini pendenti, informazioni negozio. Rispondi sempre in italiano, in modo conciso e professionale. Usa le funzioni disponibili quando ti vengono chiesti dati specifici.'",
-        "AgentViewModel.SendAsync: rimossa chiamata a BuildContextAsync(); chiama _kernelService.SendMessageAsync(_chatHistory, message, ct) che gestisce internamente aggiornamento ChatHistory e function calling",
-        "AgentViewModel: rimosso metodo BuildContextAsync() e tutte le dipendenze usate solo da esso (IReportingService, ITobaccoProductRepository, ILogistaOrderRepository, IShopProfileRepository) se non usate altrove nel ViewModel",
-        "AgentViewModel: aggiunto [RelayCommand] ClearHistoryAsync() che reinizializza _chatHistory con lo stesso system message e svuota ObservableCollection Messages",
-        "AgentViewModel.IsConfigured: delega a _kernelService.IsConfigured",
-        "AgentSettingsDialog.xaml.cs: sostituito CreateAgentServiceForTest() con chiamata a _kernelService.TestConnectionAsync(provider, apiKey); IKernelService iniettato come dipendenza del dialog",
-        "AgentView.xaml: aggiunto pulsante 'Nuova conversazione' (piccolo, Material Design) nell'header accanto al titolo 'Assistente IA'; bound a ClearHistoryCommand",
-        "Gestione errori in SendAsync: cattura Exception generica da _kernelService (timeout, connessione, etc.) e aggiunge messaggio user-friendly in chat senza propagare",
-        "Build passa senza errori"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": "Completato. AgentViewModel già aggiornato in US-036/US-037: rimossa dipendenza da AgentServiceFactory, aggiunto IKernelService, campo _chatHistory gestito da CreateChatHistory(), metodo SendAsync usa _kernelService.SendMessageAsync con ChatHistory, BuildContextAsync rimosso, ClearHistoryCommand implementato per nuova conversazione, IsConfigured delega a _kernelService.IsConfigured. AgentSettingsDialog.xaml.cs già aggiornato: TestButton_Click usa _kernelService.TestConnectionAsync(provider, apiKey). Aggiunto pulsante 'Nuova conversazione' in AgentView.xaml header con icona refresh Material Design, bind a ClearHistoryCommand, tooltip, hover effect trasparente. Gestione errori completa in SendAsync per AgentNotConfiguredException (mostra messaggio e imposta IsConfigured=false), AgentApiException (GetFriendlyErrorMessage), OperationCanceledException e Exception generica. Build passa con 0 errori e 0 warnings."
-    },
-    {
-      "id": "US-034",
-      "title": "UI Desktop: Modernizzazione stile Controlli di Input e TabControl",
-      "description": "Come utente, voglio un'interfaccia coerente e flat anche per i controlli di input (ComboBox, CheckBox, TextBox, ecc.) e le tabulazioni (TabControl), per eliminare l'aspetto obsoleto di Windows in tutta la UI.",
-      "acceptanceCriteria": [
-        "Sviluppato un nuovo ControlTemplate per CheckBox e RadioButton con uno stile 'flat' vettoriale, usando il colore AccentBaseBrush per lo stato selezionato e integrando animazioni fluide al check.",
-        "Rinnovato lo stile del ComboBox, rimuovendo il pulsante 3D di default a favore di un'icona chevron down minimalista.",
-        "Aggiunto un leggero CornerRadius (es. 4) a tutte le caselle di testo (TextBox e PasswordBox) in concordanza con le DataGrid smussate.",
-        "Creato un nuovo file TabControlStyles.xaml per definire uno stile personalizzato ai TabControl e TabItem.",
-        "I nuovi TabItem mostrano uno stile tipico Material/Web: testo pulito, senza bordi 3D e con un indicatore colorato (AccentBaseBrush) quando selezionati.",
-        "Integrati tutti i nuovi template in AppTheme.xaml e rimossi i commenti ai binding automatici qualora il bug originario sia ora risolto."
+        "Aggiunta chiave di configurazione enableGlobalShortcuts (boolean, default true) nello store configurazioni",
+        "Il modulo shortcuts.js legge questa configurazione all'avvio e registra gli shortcut solo se enableGlobalShortcuts è true",
+        "Prevista una funzione di reload/reregistration degli shortcut quando il valore di enableGlobalShortcuts cambia (esposta via IPC o funzione utility)",
+        "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "Creato TabControlStyles.xaml in Themes/Controls con stile Material/Web: ModernTabControlStyle con TabPanel header e indicatore colorato AccentBaseBrush sul tab selezionato, ModernTabItemStyle con hover state (SurfaceHoverBrush), selected state con FontWeight SemiBold e indicatore bottom 3px, ModernTabControlCardStyle con content area card-style e CornerRadius, ModernVerticalTabControlStyle e ModernVerticalTabItemStyle per tab laterali. Aggiornato InputStyles.xaml con ControlTemplate completi: ModernCheckBoxStyle con checkmark vettoriale Path (M1,5 L4,8 L11,1) e IndeterminateMark Rectangle, sfondo AccentBaseBrush quando checked, CornerRadius 4; ModernRadioButtonStyle con RadioDot Ellipse e CornerRadius 10; ModernComboBoxStyle con ToggleButton custom contenente chevron icon Path rotazione 180° quando aperto, popup con DropShadowEffect e CornerRadius 4; ModernTextBoxStyle e ModernPasswordBoxStyle con CornerRadius 4, focus border AccentBaseBrush thickness 2. Integrato TabControlStyles.xaml in AppTheme.xaml MergedDictionaries. Build passa con 0 errori."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-039",
-      "title": "IA: Provider Modello locale (GGUF) – impostazioni e validazione",
-      "description": "Come gestore, voglio poter scegliere un modello LLM locale (file GGUF) come provider dell'assistente IA, senza dover installare Ollama né inserire API key, con percorso file configurabile e validato.",
+      "id": "US-010",
+      "title": "Icona tray con menu contestuale",
+      "description": "Come utente, voglio un'icona nella system tray che mi permetta di controllare rapidamente la riproduzione e lo stato dell'app.",
       "acceptanceCriteria": [
-        "Aggiunto AgentProvider.LocalGGUF = 2 all'enum in IAgentSettingsService.cs con commento XML (modello GGUF locale, nessuna API key)",
-        "AgentSettings record esteso con proprietà string LocalModelPath (percorso assoluto del file .gguf), default string.Empty",
-        "AgentSettingsService.HasValidConfiguration(): per Provider == LocalGGUF ritorna true se IsEnabled && !string.IsNullOrWhiteSpace(LocalModelPath) && File.Exists(LocalModelPath)",
-        "AgentSettings: GetActiveApiKey() (o helper equivalente) per LocalGGUF restituisce LocalModelPath così il chiamante può riusare lo stesso parametro per test e build kernel",
-        "AgentSettingsService.SaveSettingsAsync/LoadSettingsAsync gestiscono correttamente LocalModelPath nella serializzazione JSON (il file agent_settings.dat contiene il path)",
-        "Build passa senza errori"
+        "Creato modulo app/main/tray.js che inizializza una Tray icon con un'icona da assets/icons/",
+        "Il menu contestuale della tray include voci: Play/Pause, Next, Previous, Show App, Quit",
+        "I comandi del menu invocano mediaController e windowManager per eseguire le azioni corrispondenti",
+        "Doppio click sull'icona tray porta la finestra principale in primo piano",
+        "La chiusura dell'app rimuove correttamente l'icona dalla tray",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Notifiche native cambio brano con artwork",
+      "description": "Come utente, voglio ricevere una notifica nativa di Windows quando cambia il brano, con titolo, artista e copertina.",
+      "acceptanceCriteria": [
+        "Creato modulo app/main/notifications.js che espone una funzione showTrackNotification({ title, artist, artworkPath })",
+        "Dal renderer o dal preload viene inviato un evento IPC al cambio brano con metadati (titolo, artista, URL copertina)",
+        "Implementato un piccolo servizio di download/cache per l'artwork che salva le immagini in una cartella cache (vedi US-012) e passa il path locale a showTrackNotification",
+        "La notifica utilizza la Notification API di Electron con icona/copertina appropriata",
+        "E' presente una chiave di configurazione showNotifications (boolean, default true) che abilita/disabilita l'invio di notifiche",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Cache locale artwork con limite dimensione",
+      "description": "Come sviluppatore, voglio una cache locale per le copertine degli album con limite dimensione e politica LRU, in modo da non ri-scaricare continuamente le immagini.",
+      "acceptanceCriteria": [
+        "Creato modulo app/main/cacheManager.js con funzioni per salvare e recuperare artwork su disco in una cartella {AppData}/cache/artwork/",
+        "Il modulo mantiene un indice (es. JSON) di file cache con dimensione e ultimo accesso",
+        "E' configurabile un limite di dimensione totale cache (es. 100MB default) tramite configurazione",
+        "Quando il limite viene superato, i file meno recenti vengono eliminati finché la dimensione totale rientra sotto la soglia (LRU)",
+        "Integrato con notifications/mini player per riutilizzare gli artwork già scaricati",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Finestra Mini Player always-on-top",
+      "description": "Come utente, voglio un mini player compatto sempre in primo piano con le informazioni essenziali del brano e i controlli principali.",
+      "acceptanceCriteria": [
+        "Creato modulo app/main/miniPlayer.js che gestisce la creazione e distruzione di una seconda BrowserWindow di dimensioni ridotte (circa 340x130px)",
+        "La finestra mini player è configurata come alwaysOnTop e senza elementi di chrome superflui (es. titlebar minimale)",
+        "Il contenuto del mini player mostra copertina, titolo, artista e pulsanti Play/Pause, Next, Previous, e una barra di progresso semplice",
+        "Il mini player legge i dati correnti del brano via IPC dal main/renderer",
+        "Esiste un meccanismo di toggle (mostra/nascondi) invocabile da shortcut globale e menu tray",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Tema light/dark/system per UI integrata",
+      "description": "Come utente, voglio poter scegliere tra tema chiaro, scuro o seguire il tema di sistema per gli elementi UI dell'app (mini player, eventuali overlay/config).",
+      "acceptanceCriteria": [
+        "Aggiunta chiave theme (string) nelle configurazioni con valori possibili: 'light', 'dark', 'system' (default 'system')",
+        "Implementata logica che legge nativeTheme di Windows e seleziona light/dark quando theme='system'",
+        "Gli elementi UI controllati dall'app (mini player, eventuali dialog di impostazioni) utilizzano CSS variables per colori coerenti con il tema scelto",
+        "Un cambio di tema a runtime aggiorna gli stili senza necessità di riavviare l'app (dove ragionevole)",
+        "Typecheck passes"
       ],
       "priority": 14,
-      "passes": true,
-      "notes": "Implementato completamente. Aggiunto AgentProvider.LocalGGUF = 2 all'enum con commento XML che descrive il modello GGUF locale senza API key. AgentSettings record esteso con proprietà string LocalModelPath (default string.Empty). AgentSettingsService.HasValidConfiguration() aggiornato per LocalGGUF: ritorna true se IsEnabled && !string.IsNullOrWhiteSpace(LocalModelPath) && File.Exists(LocalModelPath). GetActiveApiKey() aggiornato per restituire LocalModelPath quando Provider == LocalGGUF. La serializzazione JSON del record AgentSettings include automaticamente LocalModelPath. Aggiornato anche il docstring di IAgentSettingsService.HasValidConfiguration() per documentare il caso LocalGGUF. Build passa con 0 errori e 0 warnings."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-040",
-      "title": "IA: Integrazione LLamaSharp per inferenza locale GGUF",
-      "description": "Come sviluppatore, voglio che il KernelService supporti l'inferenza in-process tramite LLamaSharp caricando un file GGUF, così il cliente non deve installare Ollama e il modello può essere distribuito o scaricato nella cartella dell'app.",
+      "id": "US-015",
+      "title": "Ad Block UI cosmetico tramite DOM injection",
+      "description": "Come utente, voglio che gli elementi pubblicitari visivi (banner, overlay) in YouTube Music vengano nascosti per un'esperienza meno distrattiva, senza interferire con le richieste di rete.",
       "acceptanceCriteria": [
-        "Aggiunti pacchetti NuGet: LLamaSharp e LLamaSharp.semantic-kernel (e backend es. LLamaSharp.Backend.Cpu) al progetto che ospita KernelService (Desktop o Infrastructure)",
-        "KernelService.BuildKernel(provider, apiKey, includePlugins): aggiunto case AgentProvider.LocalGGUF dove apiKey è interpretato come percorso file GGUF; creazione LLamaWeights da file, InteractiveExecutor, LLamaSharpChatCompletion registrato come IChatCompletionService nel kernel",
-        "Gestione lifecycle: pesi/contesto LLamaSharp sono IDisposable; kernel in cache viene ricostruito (e risorse rilasciate) al cambio provider o al cambio percorso modello",
-        "KernelService.TestConnectionAsync(AgentProvider.LocalGGUF, modelPath, ct): costruisce kernel temporaneo con il path fornito, invia messaggio di test 'Rispondi solo con OK.', ritorna true/false; dispose risorse dopo il test",
-        "GetOrCreateKernelAsync: per LocalGGUF usa LocalModelPath dalle settings (tramite GetActiveApiKey che restituisce il path) e invalida cache se path cambia",
-        "Errori gestiti: file non trovato, formato non valido, eccezioni LLamaSharp con messaggi user-friendly e log",
-        "Build passa senza errori"
+        "Aggiunta chiave adBlockUI (boolean, default true) nelle configurazioni",
+        "Nel preload o nel renderer viene iniettato uno script che nasconde selettori noti (es. 'ad-container', 'banner', overlay promozionali) tramite CSS/JS",
+        "Implementato un MutationObserver che applica le stesse regole a elementi aggiunti dinamicamente",
+        "Non vengono bloccate richieste di rete, solo nascosti elementi DOM (approccio puramente cosmetico)",
+        "Typecheck passes"
       ],
       "priority": 15,
-      "passes": true,
-      "notes": "Implementato completamente. Aggiunti pacchetti NuGet LLamaSharp (0.21.0), LLamaSharp.Backend.Cpu (0.21.0) e LLamaSharp.semantic-kernel (0.21.0) a Desktop.csproj. KernelService aggiornato con: case AgentProvider.LocalGGUF in BuildKernel() che crea LLamaWeights, LLamaContext, InteractiveExecutor e LLamaSharpChatCompletion registrato come IChatCompletionService; gestione lifecycle IDisposable con campi _cachedLlamaWeights e _cachedLlamaContext, metodo DisposeLlamaResources() chiamato al cambio provider/path e nel Dispose(); TestLocalGGUFAsync() costruisce risorse temporanee, invia messaggio test e dispone sempre nel finally; GetOrCreateKernelAsync rilascia risorse LLama se provider cambia da/a LocalGGUF; errori gestiti con messaggi user-friendly (file non trovato, formato non valido, OutOfMemoryException). KernelService implementa IDisposable. Build passa con 0 errori e 0 warnings."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-041",
-      "title": "UI Desktop: Opzione Modello locale (GGUF) nel dialog impostazioni assistente",
-      "description": "Come gestore, voglio poter selezionare 'Modello locale (GGUF)' nelle impostazioni assistente IA, indicare il percorso del file .gguf (anche tramite Sfoglia), testare la connessione e salvare senza dover inserire API key.",
+      "id": "US-016",
+      "title": "Persistenza configurazioni utente in AppData con electron-store",
+      "description": "Come sviluppatore, voglio centralizzare la persistenza delle configurazioni utente in AppData usando electron-store, in modo che preferenze e stato siano mantenuti tra le sessioni.",
       "acceptanceCriteria": [
-        "AgentSettingsDialog.xaml: aggiunto terzo RadioButton (LocalGGUFRadio) 'Modello locale (GGUF)' con badge tipo 'Offline / Nessuna API key'; gruppo Provider",
-        "AgentSettingsDialog.xaml: aggiunto pannello LocalGGUFPanel (Visibility legata a LocalGGUFRadio) con TextBox per percorso file .gguf e pulsante 'Sfoglia' che apre OpenFileDialog con filtro *.gguf",
-        "Testo di aiuto nel pannello: suggerimento percorso predefinito (es. %LocalAppData%\\GestionaleTabacchi\\models\\llm\\) e che il file può essere copiato o scaricato",
-        "AgentSettingsDialog.xaml.cs: caricamento impostazioni – se Provider == LocalGGUF selezionare LocalGGUFRadio e popolare il campo percorso con LocalModelPath",
-        "AgentSettingsDialog.xaml.cs: salvataggio – se LocalGGUFRadio selezionato, salvare Provider = LocalGGUF e LocalModelPath = valore campo percorso",
-        "AgentSettingsDialog.xaml.cs: UpdateProviderPanels mostra/nasconde LocalGGUFPanel; UpdateSaveButtonState per LocalGGUF abilita Salva se percorso non vuoto (e opzionalmente File.Exists)",
-        "Test connessione: se provider LocalGGUF chiamare _kernelService.TestConnectionAsync(AgentProvider.LocalGGUF, pathModello, ct); dialog deve usare IKernelService (non AgentServiceFactory) per il test",
-        "Build passa senza errori"
+        "Creato modulo app/main/settings.js (o configStore.js) che inizializza un'istanza di electron-store con un namespace per l'app",
+        "Le chiavi di configurazione base (theme, startMinimized, minimizeToTray, closeToTray, showNotifications, enableGlobalShortcuts, enableDiscordRPC, adBlockUI, shortcuts, window) sono documentate in uno schema o commento",
+        "Le funzioni get/set delle configurazioni sono riutilizzate da windowManager, shortcuts, notifications, theme engine, ecc.",
+        "Verificato che modifiche alle impostazioni (anche via dev tools) vengono persistite in file JSON in AppData",
+        "Typecheck passes"
       ],
       "priority": 16,
-      "passes": true,
-      "notes": "Implementato completamente. AgentSettingsDialog.xaml: aggiunto terzo RadioButton (LocalGGUFRadio) 'Modello locale (GGUF)' con badge blu 'Offline / Nessuna API'. Aggiunto LocalGGUFPanel con TextBox per percorso file e pulsante 'Sfoglia...' che apre OpenFileDialog con filtro *.gguf. Testo di aiuto con suggerimento percorso predefinito (%LocalAppData%\\GestionaleTabacchi\\models\\llm\\). Indicatore visivo di validità file (verde se valido, rosso se non trovato, giallo se estensione non corretta). AgentSettingsDialog.xaml.cs: OnDialogLoaded gestisce caricamento Provider == LocalGGUF e popola LocalModelPathTextBox. SaveButton_Click salva Provider = LocalGGUF e LocalModelPath. UpdateProviderPanels mostra/nasconde LocalGGUFPanel. UpdateSaveButtonState per LocalGGUF abilita Salva se percorso non vuoto. BrowseModel_Click apre OpenFileDialog con directory iniziale consigliata. ValidateLocalModelPath fornisce feedback visivo sulla validità del file. TestButton_Click chiama _kernelService.TestConnectionAsync(AgentProvider.LocalGGUF, pathModello, ct). Altezza finestra aumentata da 580 a 680px. Build passa con 0 errori."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-042",
-      "title": "IA: Download modello GGUF consigliato con filtro in base al PC",
-      "description": "Come gestore, voglio poter scaricare un modello GGUF consigliato direttamente dal dialog impostazioni assistente, vedendo solo i modelli compatibili con la RAM del mio PC (nessun modello troppo pesante), con progress e percorso predefinito.",
+      "id": "US-017",
+      "title": "Comportamento minimizeToTray e closeToTray",
+      "description": "Come utente, voglio che l'app possa minimizzarsi nella tray e opzionalmente non chiudersi quando clicco la X, per continuare ad ascoltare musica in background.",
       "acceptanceCriteria": [
-        "Creato ISystemSpecsService in Infrastructure: long GetAvailablePhysicalMemoryMb() (RAM fisica disponibile su Windows via WMI Win32_OperatingSystem o GlobalMemoryStatusEx); opzionale long? GetGpuVramMb(); fallback conservativo (es. 0 o 2048) se rilevamento fallisce",
-        "Manifest modelli consigliati: record/classe con 2-3 voci (Id, NomeDisplay, Url, DimensioneMin/Max, NomeFileDestinazione, RequiredRamMb). Metodo GetModelsCompatibleWithCurrentMachine() che restituisce solo modelli con RequiredRamMb <= RAM disponibile (con margine es. 80-90%)",
-        "Creato ILocalLlmDownloadService in Infrastructure: Task<string?> DownloadRecommendedModelAsync(model, destinationDirectory, IProgress<double>? progress, CancellationToken ct); download in %LocalAppData%\\GestionaleTabacchi\\models\\llm\\, validazione dimensione, report progress se Content-Length disponibile; ritorna path o null",
-        "AgentSettingsDialog: nel pannello Modello locale (GGUF), blocco 'Scarica modello consigliato' con ComboBox popolata solo con modelli compatibili (GetModelsCompatibleWithCurrentMachine); se nessuno compatibile ComboBox vuota e messaggio 'Il tuo PC ha circa X GB RAM liberi. Per i modelli consigliati servono almeno Y GB. Puoi usare un file GGUF con Sfoglia.'",
-        "Pulsante 'Scarica' abilitato solo se è selezionato un modello; avvia download con ProgressBar e CancellationToken (Annulla); a successo imposta il percorso nel TextBox e mostra 'Scarica completata. Il percorso è stato impostato.'",
-        "ISystemSpecsService e ILocalLlmDownloadService registrati in DI; manifest e filtro modelli disponibili al dialog (tramite servizio o factory)",
-        "Build passa senza errori"
+        "Aggiunte chiavi di configurazione startMinimized (boolean, default false), minimizeToTray (boolean, default true), closeToTray (boolean, default true)",
+        "Se minimizeToTray è true, l'azione di minimizza nasconde la finestra mantenendo l'icona nella tray",
+        "Se closeToTray è true, il click sulla X della finestra principale minimizza nella tray invece di chiudere il processo (con eventuale tooltip la prima volta)",
+        "L'uscita completa dall'app avviene solo tramite menu tray 'Quit' o combinazione esplicita",
+        "Typecheck passes"
       ],
       "priority": 17,
-      "passes": true,
-      "notes": "Implementato completamente. Creato ISystemSpecsService in Infrastructure/Services con metodi GetAvailablePhysicalMemoryMb(), GetTotalPhysicalMemoryMb() e GetGpuVramMb(). SystemSpecsService implementa il rilevamento RAM via GlobalMemoryStatusEx (P/Invoke) con fallback WMI Win32_OperatingSystem, e GPU VRAM via WMI Win32_VideoController. Aggiunto pacchetto NuGet System.Management. Creato RecommendedModel record con Id, DisplayName, DownloadUrl, FileSizeMb, RequiredRamMb, DestinationFileName, Description, FormattedSize. ILocalLlmDownloadService e LocalLlmDownloadService gestiscono il manifest con 3 modelli Qwen 2.5 (1.5B leggero, 3B bilanciato, 7B avanzato) con URL HuggingFace, metodi GetAllRecommendedModels(), GetModelsCompatibleWithCurrentMachine(ramMb) con margine 80%, GetMinimumRequiredRam(), DownloadRecommendedModelAsync() con progress e cancellation. AgentSettingsDialog.xaml aggiornato con sezione download: info RAM, ComboBox modelli compatibili, descrizione modello, messaggio se nessun modello compatibile, ProgressBar download, pulsanti Scarica/Annulla. AgentSettingsDialog.xaml.cs aggiornato con InitializeDownloadSection(), OnModelSelectionChanged(), DownloadModel_Click(), CancelDownload_Click(), SetDownloadingState(). Altezza dialog aumentata a 780px. Named HttpClient 'llm-download' con timeout 30 min. Servizi registrati in DI come Singleton. Build passa con 0 errori."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-043",
-      "title": "Documentazione: Visualizzatore Markdown in-app",
-      "description": "Come utente, voglio poter consultare la documentazione del software direttamente dall'applicazione, con un rendering Markdown pulito e navigazione tra i moduli, per risolvere dubbi senza uscire dal programma.",
+      "id": "US-018",
+      "title": "Integrazione Discord Rich Presence",
+      "description": "Come utente, voglio che il mio stato Discord mostri che sto ascoltando YouTube Music tramite il client desktop, con informazioni di base sul brano.",
       "acceptanceCriteria": [
-        "Aggiunto pacchetto NuGet Markdig.Wpf al progetto Desktop.",
-        "Creata HelpView.xaml e HelpViewModel.cs in Views/ e ViewModels/.",
-        "Caricamento automatico della lista file .md dalla cartella Docs/ all'avvio della vista.",
-        "Sidebar in HelpView per la navigazione tra i capitoli (Dashboard, Prodotti, Ordini, etc.).",
-        "Rendering del Markdown con supporto a tabelle, immagini e alert stile GitHub.",
-        "Aggiunta voce 'Guida Software' nella sidebar principale di MainWindow.xaml.",
-        "Build passa senza errori"
+        "Aggiunta dipendenza 'discord-rpc' o equivalente nel progetto",
+        "Creato modulo app/main/discordRpc.js che inizializza il client RPC, si connette a Discord e aggiorna la Rich Presence con: stato 'Listening to', nome brano, artista, album e, se possibile, artwork",
+        "Aggiunta chiave di configurazione enableDiscordRPC (boolean, default false) che abilita l'integrazione solo quando attivata dall'utente",
+        "Gestite correttamente condizioni in cui Discord non è in esecuzione o si disconnette, senza crash dell'app",
+        "Typecheck passes"
       ],
       "priority": 18,
-      "passes": true,
-      "notes": "Implementato completamente. Aggiunto pacchetto NuGet Markdig.Wpf (0.5.0.1) a Desktop.csproj. Creato HelpViewModel.cs in ViewModels con: ObservableCollection<DocumentationChapter> Chapters, SelectedChapter, CurrentMarkdownContent, IsLoading, ErrorMessage; metodo LoadChapters() che carica i file .md da risorse embedded (Docs/*.md), ParseFileName() per estrarre ordine e titolo, LoadChapterContent() per leggere il contenuto Markdown; comandi SelectChapterCommand, PreviousChapterCommand, NextChapterCommand; mappa icone ChapterIcons per ogni modulo. Creato HelpView.xaml in Views con: layout a due colonne (sidebar 280px + contenuto), header con titolo e sottotitolo, lista capitoli scrollabile con icona e titolo, pulsanti navigazione Precedente/Successivo, MarkdownViewer Markdig.Wpf per rendering, loading indicator, empty state. Creato DocumentationChapter class con FileName, Title, Order, Icon, IsSelected. I file Docs/*.md sono configurati come EmbeddedResource nel csproj. Aggiunta voce 'Guida Software' nella sidebar MainWindow.xaml con comando ShowHelpCommand. MainViewModel: ShowHelp() metodo con [RelayCommand], campo _helpViewModel iniettato nel costruttore. HelpViewModel registrato in DI come Transient. Build passa con 0 errori."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-044",
-      "title": "IA: Knowledge base (RAG) da documentazione locale",
-      "description": "Come gestore, voglio che l'Assistente IA possa consultare la documentazione ufficiale per rispondere a domande tecniche, evitando allucinazioni e fornendo istruzioni precise sul funzionamento del software.",
+      "id": "US-019",
+      "title": "Setup Electron Builder per build Windows",
+      "description": "Come sviluppatore, voglio configurare Electron Builder per generare un eseguibile e un installer Windows NSIS per YouTube Music Desktop.",
       "acceptanceCriteria": [
-        "Creato DocumentationPlugin.cs in Desktop/Services/AI/Plugins.",
-        "Implementata funzione [KernelFunction('get_module_help')] che accetta il nome di un modulo o file e restituisce il contenuto Markdown estratto dai file in Docs/.",
-        "Registrazione del plugin nel KernelService.",
-        "Aggiornato System Message in AgentViewModel per istruire l'IA sull'uso della documentazione per domande sul software.",
-        "Verifica: l'IA risponde coerentemente a domande su procedure specifiche (es. importazione listino, chiusura cassa) usando i dati dei file .md.",
-        "Build passa senza errori"
+        "Aggiunta configurazione Electron Builder in package.json o in un file builder.json dedicato",
+        "Configurato target NSIS per Windows con nome prodotto 'YouTube Music Desktop' e icone da assets/icons/",
+        "Definiti output: eseguibile portabile (YouTubeMusicDesktop.exe) e installer (YouTubeMusicDesktopSetup.exe)",
+        "Eseguendo 'npm run dist' (o equivalente) viene generato un artefatto installabile senza errori",
+        "Typecheck passes"
       ],
       "priority": 19,
-      "passes": true,
-      "notes": "Implementato completamente. Creato DocumentationPlugin.cs in Desktop/Services/AI/Plugins con: caricamento automatico di tutti i file .md da risorse embedded al momento della creazione, cache in memoria per performance, tre funzioni KernelFunction: get_module_help (restituisce guida per modulo specifico con troncamento a 3000 caratteri), search_documentation (ricerca full-text con ranking per rilevanza e snippet contestuali, top 3 risultati), list_documentation_modules (elenco completi dei 16 capitoli). Registrato DocumentationPlugin come Singleton in App.xaml.cs (linea 145). KernelService aggiornato: aggiunto campo _documentationPlugin, costruttore con parametro DocumentationPlugin, BuildKernel registra plugin con nome 'Documentazione'. System prompt esteso per istruire l'IA su due categorie di funzioni (Negozio e Documentazione) con regole specifiche per quando usare ciascuna. Build passa con 0 errori e 0 warnings."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-045",
-      "title": "IA: Spiegazione in linguaggio naturale dei suggerimenti ordine",
-      "description": "Come gestore, voglio che ogni suggerimento ordine generato dal sistema mostri una spiegazione in italiano del motivo per cui quel prodotto viene suggerito, in modo da capire la logica di calcolo senza leggere numeri grezzi.",
+      "id": "US-020",
+      "title": "Integrazione electron-updater con GitHub Releases",
+      "description": "Come utente, voglio che l'app verifichi automaticamente la presenza di aggiornamenti e li installi al riavvio, utilizzando GitHub Releases come sorgente.",
       "acceptanceCriteria": [
-        "Aggiunto campo string? AiExplanation a OrderSuggestion (o DTO equivalente usato in OrderSuggestionViewModel).",
-        "Creata funzione GenerateSuggestionExplanationAsync(OrderSuggestionDto suggestion) in un nuovo OrderSuggestionExplainerPlugin o direttamente in OrderSuggestionViewModel, che chiama IKernelService con un prompt strutturato contenente: nome prodotto, scorte attuali, scorte minime, vendite medie giornaliere, giorni autonomia, trend, priorità.",
-        "Il prompt istruisce il modello a rispondere in 2-3 frasi in italiano, senza elenchi puntati, spiegando perché il prodotto è urgente e cosa succederà se non viene ordinato.",
-        "In OrderSuggestionView (o card prodotto), aggiunto un'area collassabile (ToggleButton \"Perché?\") che mostra AiExplanation quando disponibile.",
-        "La chiamata IA avviene in background (Task.Run o async) al caricamento dei suggerimenti; un indicatore di loading \"...\" viene mostrato durante l'attesa.",
-        "Se IKernelService non è configurato (IsEnabled = false o provider non impostato), il campo rimane null e il bottone \"Perché?\" è nascosto.",
-        "Build passa senza errori."
+        "Aggiunta dipendenza 'electron-updater' nel progetto",
+        "Creato modulo app/main/updater.js che configura autoUpdater con l'owner/repo GitHub corretti",
+        "All'avvio dell'app viene chiamato autoUpdater.checkForUpdates() (con throttling ragionevole) e scaricato in background un update quando disponibile",
+        "Al termine del download, viene mostrata una notifica/dialog che informa l'utente che l'aggiornamento sarà applicato al prossimo riavvio (usando autoUpdater.quitAndInstall quando richiesto)",
+        "Prevista anche un'azione manuale 'Verifica aggiornamenti' accessibile da menu o tray che forza la verifica",
+        "Typecheck passes"
       ],
       "priority": 20,
-      "passes": true,
-      "notes": "Implementato completamente. Aggiunto campo string? AiExplanation a OrderSuggestion in Domain/Models. OrderSuggestionItemViewModel aggiornato con: proprietà AiExplanation, IsGeneratingExplanation, IsExplanationExpanded (ObservableProperty), HasAiExplanation (computed), GenerateAiExplanationAsync() che chiama IKernelService con prompt strutturato contenente dati prodotto, ToggleExplanationCommand per espandere/collassare. OrderSuggestionViewModel aggiornato: inietta IKernelService opzionale, IsAiConfigured property, GenerateAiExplanationsInBackgroundAsync() chiamato automaticamente dopo caricamento suggerimenti. Prompt in italiano che istruisce il modello a rispondere in 2-3 frasi discorsive spiegando urgenza e conseguenze. CreateLogistaOrderView.xaml aggiornato: sezione AI Explanation collassabile con ToggleButton 'Perché?' (visibile solo quando HasAiExplanation o IsGeneratingExplanation), indicatore 'Analisi in corso...' durante generazione, pannello espandibile con sfondo blu chiaro e bordo InfoBaseBrush. Bottone nascosto se IA non configurata. Build passa con 0 errori e 0 warnings."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-046",
-      "title": "IA: Sintesi esecutiva del report vendite",
-      "description": "Come gestore, voglio che nella schermata Report venga generato automaticamente un paragrafo di commento in italiano che sintetizza i dati del periodo selezionato, evidenziando trend, picchi e anomalie, così da avere una lettura immediata senza analizzare ogni grafico.",
+      "id": "US-021",
+      "title": "Disabilitazione DevTools e hardening configurazione Electron",
+      "description": "Come sviluppatore, voglio che in produzione DevTools siano disabilitati e che la configurazione Electron segua le best practice di sicurezza.",
       "acceptanceCriteria": [
-        "Aggiunta proprietà string? AiSummary e bool IsGeneratingSummary in ReportingViewModel.",
-        "Aggiunto metodo GenerateAiSummaryAsync() chiamato automaticamente dopo il caricamento dei dati report (dopo ExecuteLoadReportAsync o equivalente).",
-        "Il metodo costruisce un prompt che include: periodo analizzato (data inizio/fine), totale ricavi, numero transazioni, valore medio scontrino, top 3 prodotti per volume, eventuale confronto con periodo precedente se disponibile.",
-        "Il modello risponde con 3-5 frasi in italiano: un commento generale sul periodo, un evidenza positiva, un'anomalia o area di attenzione, e una frase conclusiva.",
-        "In ReportingView.xaml, aggiunta sezione \"Analisi IA\" sotto i filtri data e sopra i grafici, con TextBlock wrappato e indicatore di loading.",
-        "Se IKernelService non è abilitato, la sezione \"Analisi IA\" è collassata (Visibility = Collapsed).",
-        "Build passa senza errori."
+        "In modalità produzione (NODE_ENV=production o equivalente), DevTools non sono apribili da menu o scorciatoie",
+        "Verificato che tutte le BrowserWindow usano webPreferences coerenti: contextIsolation: true, sandbox: true, nodeIntegration: false, enableRemoteModule: false",
+        "E' documentata ed implementata una whitelist delle API esposte dal preload tramite contextBridge",
+        "E' attivato backgroundThrottling dove opportuno per risparmiare risorse quando l'app è in background",
+        "Typecheck passes"
       ],
       "priority": 21,
-      "passes": true,
-      "notes": "Implementato completamente. ReportingViewModel aggiornato con: iniezione opzionale IKernelService, proprietà AiSummary (string?), IsGeneratingSummary (bool), IsAiConfigured (computed). Metodo GenerateAiSummaryAsync() chiamato automaticamente dopo LoadSalesReportAsync(). Metodo BuildAiSummaryPrompt() costruisce prompt con: periodo analizzato, totale ricavi, numero transazioni, valore medio scontrino, top 3 prodotti per volume, variazione vs mese precedente. Il prompt istruisce il modello a rispondere con 3-5 frasi in italiano (commento generale, evidenza positiva, area di attenzione, frase conclusiva). ReportingView.xaml aggiornato: sezione 'Analisi IA' con icona robot, header, indicatore loading ('Generazione analisi in corso...'), TextBlock wrappato per la sintesi. Sezione visibile solo se IsAiConfigured=true (Visibility binding con BooleanToVisibilityConverter). Build passa con 0 errori e 0 warnings."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-047",
-      "title": "IA: Suggerimenti automatici eventi calendario da pattern ordini",
-      "description": "Come gestore, voglio che il sistema analizzi i miei pattern di ordini e consegne passati e mi suggerisca eventi da aggiungere al calendario (es. promemoria ordine, attesa consegna), così da non dimenticare scadenze ricorrenti.",
+      "id": "US-022",
+      "title": "Ottimizzazioni performance base",
+      "description": "Come utente, voglio che l'app consumi una quantità ragionevole di CPU e RAM rispetto a un normale browser.",
       "acceptanceCriteria": [
-        "Creato CalendarSuggestionPlugin.cs in Desktop/Services/AI/Plugins con funzione KernelFunction get_order_patterns che recupera da ILogistaOrderRepository gli ultimi 90 giorni di ordini confermati (data conferma, fornitore, giorno della settimana).",
-        "In CalendarViewModel, aggiunto comando GenerateAiSuggestionsCommand che chiama IKernelService con un prompt contenente i pattern estratti dal plugin.",
-        "Il prompt chiede al modello di identificare ricorrenze (es. \"ordini il lunedì ogni 2 settimane\") e restituire un array JSON di eventi suggeriti con: titolo, descrizione, data proposta (ISO 8601), tipo (Reminder/Deadline).",
-        "L'output JSON viene parsato e mostrato in un pannello laterale \"Suggerimenti IA\" in CalendarView.xaml con pulsante \"Aggiungi al calendario\" per ogni suggerimento.",
-        "Il click su \"Aggiungi\" chiama ICalendarService.CreateEventAsync() con i dati del suggerimento.",
-        "Se il parsing JSON fallisce o IKernelService non è abilitato, il pannello è nascosto e non viene mostrato alcun errore bloccante.",
-        "Build passa senza errori."
+        "Moduli opzionali (Discord RPC, updater UI, eventuali analytics) vengono caricati in lazy loading solo quando realmente necessari",
+        "Verificato tramite test manuali che in idle la CPU media è <5% e in riproduzione <15% su una macchina di riferimento documentata",
+        "Verificato che il consumo RAM tipico in riproduzione standard sia intorno o inferiore a 250MB",
+        "Tempo di avvio misurato e documentato <3 secondi su SSD per un cold start tipico",
+        "Typecheck passes"
       ],
       "priority": 22,
-      "passes": true,
-      "notes": "Implementato completamente. Creato CalendarSuggestionPlugin.cs in Desktop/Services/AI/Plugins con funzione KernelFunction get_order_patterns che analizza ultimi 90 giorni di ordini Logista: estrae giorni preferiti per ordini/consegne, frequenza media, lead time, ultimo ordine e prossimo ordine previsto. Registrato plugin in App.xaml.cs e KernelService con nome 'Calendario'. CalendarViewModel aggiornato: inietta IKernelService opzionale, proprietà AiSuggestions (ObservableCollection<AiCalendarSuggestion>), IsGeneratingAiSuggestions, ShowAiSuggestionsPanel, IsAiConfigured. Comandi: ToggleAiSuggestionsPanelCommand, GenerateAiSuggestionsCommand (prompt che richiede JSON con suggerimenti), AddAiSuggestionToCalendarCommand (crea evento via ICalendarService.CreateEventAsync), DismissAiSuggestionCommand. AiCalendarSuggestion e AiSuggestionDto classes per parsing JSON. CalendarView.xaml aggiornato: pulsante 'Suggerimenti IA' blu nell'header (visibile solo se IsAiConfigured), pannello espandibile con border blu contenente lista suggerimenti, loading state, empty state. Ogni suggerimento mostra titolo, descrizione, data formattata, tipo evento, pulsanti 'Aggiungi' e 'Ignora'. Gestione errori graceful: parsing JSON fallito non blocca UI. Build passa con 0 errori."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-048",
-      "title": "IA: Helpdesk contestuale basato sulla schermata attiva",
-      "description": "Come utente, voglio che l'Assistente IA sappia in quale sezione dell'applicazione mi trovo e risponda a domande di supporto in modo contestuale, senza che io debba specificare il modulo ogni volta.",
+      "id": "US-023",
+      "title": "Piano di test funzionale per player e integrazioni desktop",
+      "description": "Come sviluppatore, voglio un piano di test funzionale strutturato che copra le aree critiche dell'app (player, media keys, tray, notifiche, mini player, shortcut).",
       "acceptanceCriteria": [
-        "Aggiunta proprietà string ActiveModule in AgentContext (es. \"Dashboard\", \"Ordini\", \"Inventario\", \"Report\", \"Calendario\", \"Prodotti\").",
-        "MainViewModel (o NavigationService) aggiorna ActiveModule ogni volta che cambia la vista attiva, passando il valore corrente a IKernelService tramite AgentContext.",
-        "Il System Message in AgentViewModel viene aggiornato per includere: \"L'utente si trova attualmente nel modulo: {ActiveModule}. Rispondi prioritariamente in relazione a questa sezione, usando la documentazione disponibile.\"",
-        "DocumentationPlugin.get_module_help viene chiamato automaticamente con ActiveModule come parametro quando il modello valuta che la domanda è di tipo help/procedura.",
-        "Aggiunto suggerimento visivo nell'AgentView: sotto il campo di testo, piccola label grigia \"Contesto: {ActiveModule}\" che mostra il modulo attivo corrente.",
-        "Il comportamento non cambia se IKernelService non è configurato.",
-        "Build passa senza errori."
+        "Creato file di documentazione (es. docs/testing-functional.md) con una tabella di test per: player, media keys, system tray, notifiche, mini player, shortcut, finestra (minimize/restore/fullscreen/close-to-tray), temi, auto-update",
+        "Ogni test case specifica: precondizioni, passi, risultato atteso e priorità (critico, alto, medio)",
+        "Il file è referenziato dal README o da un file CONTRIBUTING per uso durante i rilasci",
+        "Typecheck passes"
       ],
       "priority": 23,
-      "passes": true,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Checklist test performance e consumo risorse",
+      "description": "Come sviluppatore, voglio una checklist specifica per testare CPU, RAM, traffico rete e tempo di avvio durante i test di regressione.",
+      "acceptanceCriteria": [
+        "Creato documento (es. docs/testing-performance.md) che elenca le metriche da verificare: CPU idle, CPU in riproduzione, RAM in riproduzione, traffico rete superfluo, tempo di startup",
+        "Definiti gli strumenti consigliati (Task Manager, Performance Monitor, strumenti di sistema) e come usarli",
+        "Indicati valori target o range accettabili per ciascuna metrica, in linea con il piano di implementazione",
+        "Typecheck passes"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Configurazione canali di distribuzione e firma codice",
+      "description": "Come proprietario del progetto, voglio che l'app sia distribuibile tramite GitHub Releases e un eventuale sito dedicato, con firma del codice per ridurre i warning di sicurezza.",
+      "acceptanceCriteria": [
+        "Configurato Electron Builder per usare GitHub Releases come provider aggiornamenti (owner/repo e token dove necessario)",
+        "Documentata l'eventuale configurazione di un sito web/landing page da cui scaricare l'installer (anche solo a livello di README/link)",
+        "Configurati i parametri di Code Signing in Electron Builder (es. win.certificateFile o simili), anche se inizialmente con un certificato di test/documentazione su come impostarne uno reale",
+        "Verificato almeno in un ambiente di test che l'installer firmato riduca i warning SmartScreen rispetto a uno non firmato",
+        "Typecheck passes"
+      ],
+      "priority": 25,
+      "passes": false,
       "notes": ""
     }
   ]
 }
+

@@ -1,16 +1,18 @@
-# Big Plan - TobaccoManagement Roadmap
+# Big Plan - YouTube Music Desktop
 
-Visione generale delle feature da implementare nel gestionale tabacchi.
+Visione generale delle feature da implementare per il client desktop YouTube Music su Windows.
 Ogni sezione puo diventare un PRD separato per Ralph.
 
 ---
 
 ## Visione del Prodotto
 
-**Obiettivo:** Creare il gestionale piu completo e intuitivo per tabaccherie italiane,
-con focus su automazione, conformita normativa e analisi dati.
+**Obiettivo:** Creare un client desktop nativo per Windows basato su Electron che offra
+un'esperienza YouTube Music integrata nel sistema operativo: controlli multimediali,
+mini player, notifiche, integrazioni di sistema e aggiornamenti automatici.
 
-**Target:** Tabaccherie singole e catene di tabaccherie in Italia.
+**Target:** Utenti Windows che utilizzano YouTube Music via browser e desiderano
+un'app dedicata con funzionalita desktop avanzate.
 
 ---
 
@@ -25,560 +27,209 @@ con focus su automazione, conformita normativa e analisi dati.
 
 ---
 
-## FASE 1: Notifiche e Avvisi 🔴
+## FASE 1: Core Shell & Browser Wrapper 🔴
 
-**Branch:** `ralph/notifications-system`
-**Stato:** Completato
-**Complessita:** Media (7 user stories)
+**Branch:** `ralph/core-shell-window-manager`  
+**Stato:** Pianificato  
+**Complessita:** Bassa-Media
 
 ### Obiettivo
-Sistema di notifiche proattivo per avvisare l'utente di eventi importanti.
+Bootstrap del progetto Electron con finestra principale, gestione stato finestra
+e caricamento sicuro di `https://music.youtube.com`.
 
-### User Stories
-- [x] PRD creato
-- [x] Modello Notification nel Domain
-- [x] Repository e Service notifiche
-- [x] NotificationViewModel
-- [x] Icona campana nella toolbar con badge
-- [x] Popup lista notifiche
-- [x] Generazione automatica notifiche scorte basse
-- [x] Check notifiche all'avvio
-
-### Considerazioni Tecniche
-- Usare pattern Observer per notifiche real-time
-- Persistenza notifiche su SQLite
-- Cleanup automatico notifiche vecchie (>30 giorni)
+### User Stories (alto livello)
+- [ ] Struttura base progetto Electron con `package.json`, script npm e entry `main.js`
+- [ ] Separazione cartelle `app/main`, `app/preload`, `app/renderer`, `assets`, `config`
+- [ ] WindowManager con salvataggio/ripristino dimensione e posizione finestra
+- [ ] BrowserWrapper che carica YouTube Music con flag di sicurezza corretti
+- [ ] Gestione navigazione esterna (apertura link nel browser di sistema)
+- [ ] Content Security Policy/CSP base allineata ai domini YouTube Music
 
 ---
 
-## FASE 2: Reportistica Avanzata 🔴
+## FASE 2: Funzionalita Essenziali Player 🔴
 
-**Branch:** `ralph/advanced-reports`
-**Stato:** Completato
-**Complessita:** Alta (12-15 user stories)
-
-### Obiettivo
-Dashboard analitica con report dettagliati per decisioni informate.
-
-### User Stories
-
-**Report Vendite:**
-- [x] Report vendite giornaliero con totali e dettagli
-- [x] Report vendite settimanale con confronto settimana precedente
-- [x] Report vendite mensile con trend
-- [x] Report vendite per categoria prodotto
-- [x] Report vendite per fascia oraria
-
-**Grafici e Visualizzazioni:**
-- [x]Grafico andamento vendite (linea temporale)
-- [x] Grafico a torta categorie prodotti
-- [x] Grafico confronto periodi
-- [x] Heatmap vendite per giorno/ora
-
-**Export:**
-- [x] Export PDF report con logo tabaccheria
-- [x] Export Excel per elaborazioni esterne
-- [x] Stampa diretta report
-
-**Analisi:**
-- [x] Top 10 prodotti piu venduti
-- [x] Prodotti con margine maggiore
-- [x] Prodotti in calo vendite
-- [x] Analisi stagionalita
-
-### Considerazioni Tecniche
-- Usare LiveCharts2 o OxyPlot per grafici WPF
-- Cache report pesanti per performance
-- Background worker per generazione report
-
----
-
-## FASE 3: Sistema di Backup 🔴
-
-**Branch:** `ralph/backup-system`
-**Stato:** Completato
-**Complessita:** Media (6-8 user stories)
-
-### Obiettivo
-Protezione dati con backup automatici e ripristino semplice.
-
-### User Stories
-
-**Backup Locale:**
-- [x] Backup manuale database su richiesta
-- [x] Backup automatico giornaliero
-- [x] Configurazione cartella backup
-- [x] Rotazione backup (mantieni ultimi N)
-
-**Backup Cloud:**
-- [x] Integrazione OneDrive
-- [x] Integrazione Google Drive
-- [x] Sync automatico su cloud
-- [x] Notifica backup completato/fallito
-
-**Ripristino:**
-- [x] Lista backup disponibili
-- [x] Preview contenuto backup
-- [x] Ripristino da backup selezionato
-- [x] Ripristino da cloud
-
-**Scheduling:**
-- [x] Configurazione orario backup automatico
-- [x] Backup pre-aggiornamento app
-- [x] Log storico backup
-
-### Considerazioni Tecniche
-- SQLite backup via File.Copy o SQL VACUUM INTO
-- API OneDrive/Google Drive per cloud
-- Background service per scheduling
-- Compressione ZIP backup
-
----
-
-## FASE 4: Sincronizzazione Catalogo ADM 🔴
-
-**Branch:** `ralph/adm-sync`
-**Stato:** In corso
+**Branch:** `ralph/core-media-controls`  
+**Stato:** Pianificato  
 **Complessita:** Media
 
 ### Obiettivo
-Aggiornamento automatico dei prezzi e dei nuovi prodotti dal listino ufficiale ADM o Logista.
+Integrare i controlli multimediali nativi del sistema operativo con il player YouTube Music.
 
-### User Stories
-
-**Parser Listino:**
-- [x] Parser file Excel/CSV listino ufficiale ADM
-- [x] Parser PDF listino Logista (PdfLogistaParserService)
-- [ ] Mapping automatico prodotti esistenti via Codice AAMS
-- [ ] Aggiornamento massivo prezzi di vendita
-- [ ] Log variazioni di prezzo per l'utente
-- [ ] Rilevamento nuovi prodotti inseriti a catalogo
-
-**Download Automatizzato:**
-- [x] Download listino Logista con credenziali
-- [x] Salvataggio PDF listino scaricato
-- [x] Import listino da file Excel/PDF
-- [ ] Scheduling download automatico listino
+### User Stories (alto livello)
+- [ ] Modulo `mediaController` che collega gli eventi del player YouTube Music al main process
+- [ ] Supporto MediaSession API per play/pause/next/previous
+- [ ] Registrazione shortcut globali di default (Ctrl+Alt+P/N/B/Y, M)
+- [ ] Possibilita di abilitare/disabilitare gli shortcut globali
+- [ ] Mappatura shortcut configurabile con persistenza delle preferenze
 
 ---
 
-## FASE 5: Gestione Gratta e Vinci e Valori 🔴
+## FASE 3: Tray, Notifiche & Mini Player 🟠
 
-**Branch:** `ralph/scratch-cards`
-**Stato:** Pianificato
-**Complessita:** Alta
+**Branch:** `ralph/tray-notifications-miniplayer`  
+**Stato:** Pianificato  
+**Complessita:** Media-Alta
 
 ### Obiettivo
-Gestione completa del magazzino e vendite per Gratta e Vinci e valori bollati.
+Aggiungere integrazione con la system tray, notifiche native e mini player compatto.
 
-### User Stories
-- [x] Carico pacchi Gratta e Vinci (Codice pacco/range)
-- [x] Attivazione pacchi e tracciamento vendite singole
-- [x] Registrazione vincite pagate in cassa
-- [x] Inventario fisico pacchi aperti/chiusi
-- [x] Gestione valori bollati (marche da bollo, francobolli)
+### User Stories (alto livello)
+- [ ] Icona tray con menu contestuale (Play/Pause, Next, Previous, Show, Quit)
+- [ ] Notifiche native Windows al cambio brano (titolo, artista, copertina)
+- [ ] Cache locale artwork per notifiche e mini player
+- [ ] Finestra Mini Player always-on-top con controlli base e barra di progresso
+- [ ] Toggle Mini Player via shortcut globale e menu tray
 
 ---
 
-## FASE 6: Gestione Cassa e Chiusure 🔴
+## FASE 4: Theme Engine & Ad Block UI 🟠
 
-**Branch:** `ralph/cash-management`
-**Stato:** In corso (Vendita base implementata)
+**Branch:** `ralph/themes-and-adblock-ui`  
+**Stato:** Pianificato  
 **Complessita:** Media
 
 ### Obiettivo
-Gestione completa fondo cassa, chiusure e quadratura.
+Offrire un'esperienza visiva coerente con supporto tema e riduzione degli elementi pubblicitari cosmetici.
 
-### User Stories
-
-**Vendita Base:**
-- [x] Interfaccia vendita con lettura barcode
-- [x] Ricerca prodotto e visualizzazione prezzo
-- [x] Registrazione vendita con aggiornamento giacenza
-- [x] Storico vendite giornaliere
-- [x] Totali giornalieri
-
-**Fondo Cassa:**
-- [ ] Configurazione fondo cassa iniziale
-- [ ] Apertura cassa giornaliera
-- [ ] Prelievi e versamenti con causale
-- [ ] Visualizzazione saldo cassa teorico
-
-**Chiusura Giornaliera:**
-- [ ] Wizard chiusura di cassa
-- [ ] Conteggio fisico per taglio (monete, banconote)
-- [ ] Calcolo differenza teorico/reale
-- [ ] Note chiusura
-
-**Report Cassa:**
-- [ ] Storico chiusure
-- [ ] Report differenze cassa
-- [ ] Analisi trend differenze
-- [ ] Export chiusure per commercialista
-
-**Multi-operatore:**
-- [ ] Chiusura per operatore
-- [ ] Cambio turno con passaggio cassa
-- [ ] Report per operatore
-
-### Considerazioni Tecniche
-- Entity CashSession per apertura/chiusura
-- Entity CashMovement per prelievi/versamenti
-- Blocco vendite senza cassa aperta (opzionale)
+### User Stories (alto livello)
+- [ ] Tema light/dark/system basato su CSS variables
+- [ ] Impostazione tema sincronizzata con nativeTheme di Windows in modalita "system"
+- [ ] Opzione per abilitare/disabilitare un Ad Block UI cosmetico
+- [ ] Script DOM injection per nascondere container pubblicitari, banner e overlay
+- [ ] Gestione elementi caricati dinamicamente tramite MutationObserver
 
 ---
 
-## FASE 7: Sicurezza e Audit Avanzato 🟠
+## FASE 5: Persistenza Configurazioni 🔴
 
-**Branch:** `ralph/security-audit`
-**Stato:** Completato
+**Branch:** `ralph/settings-persistence`  
+**Stato:** Pianificato  
+**Complessita:** Bassa-Media
+
+### Obiettivo
+Persistenza di tutte le preferenze utente in AppData tramite electron-store.
+
+### User Stories (alto livello)
+- [ ] Store configurazioni con percorso sicuro in `%AppData%`
+- [ ] Salvataggio tema, preferenze tray (minimize/close to tray)
+- [ ] Salvataggio abilita/disabilita notifiche e adBlock UI
+- [ ] Persistenza scorciatoie globali configurate
+- [ ] Persistenza stato finestra (`window`): dimensioni, posizione, fullscreen
+
+---
+
+## FASE 6: Discord Rich Presence 🟡
+
+**Branch:** `ralph/discord-rich-presence`  
+**Stato:** Pianificato  
 **Complessita:** Media
 
 ### Obiettivo
-Controllo accessi granulare e tracciabilità totale delle operazioni sensibili.
+Integrazione opzionale con Discord Rich Presence per mostrare il brano in ascolto.
 
-### User Stories
-
-**Autenticazione:**
-- [x] Gestione Utenti (Create, Read, Update, Disable)
-- [x] Gestione Ruoli (Amministratore, Operatore, Visualizzatore)
-- [x] Permessi specifici per cancellazione vendite/modifica prezzi
-- [x] Login con protezione e cambio password
-- [x] Timeout sessione automatica
-
-**Audit:**
-- [x] Tracciamento operazioni sensibili (AuditLog)
-- [x] Audit log visualizzabile in UI con filtri
-- [x] Associazione UserId ai log per accountability
-
-### Considerazioni Tecniche
-- Entity User con ruoli e permessi
-- Enum Permission per permessi granulari
-- Entity AuditLog per tracciamento operazioni
-- Middleware/Service per logging automatico
+### User Stories (alto livello)
+- [ ] Integrazione libreria `discord-rpc` nel main process
+- [ ] Stato "Listening to..." con dettagli brano, artista e album
+- [ ] Configurazione per abilitare/disabilitare Discord RPC nelle impostazioni
+- [ ] Gestione errori/disconnessione Discord senza impattare il player
 
 ---
 
-## FASE 8: Gestione Fornitori 🟠
+## FASE 7: Auto Update & Packaging 🔴
 
-**Branch:** `ralph/suppliers-management`
-**Stato:** In corso (Logista implementato)
-**Complessita:** Media (8-10 user stories)
+**Branch:** `ralph/auto-update-and-packaging`  
+**Stato:** Pianificato  
+**Complessita:** Media-Alta
 
 ### Obiettivo
-Gestione completa fornitori con storico ordini e riordino intelligente.
+Configurare build, installer NSIS e aggiornamenti automatici via electron-updater.
 
-### User Stories
-
-**Ordini Logista:**
-- [x] Download listino PDF da portale Logista
-- [x] Parser PDF listino per estrazione prodotti
-- [x] Creazione ordine da listino scaricato
-- [x] Storico ordini per fornitore
-- [x] Stato ordine (bozza, inviato, ricevuto, parziale)
-- [x] Download fattura ordine da portale
-- [x] Salvataggio PDF fattura associato all'ordine
-- [x] View per gestione ordini Logista
-
-**Suggerimenti Riordino:**
-- [x] Calcolo stock di sicurezza dinamico
-- [x] Analisi storico vendite per previsione domanda
-- [x] Servizio suggerimento ordini automatico
-- [x] Visualizzazione suggerimenti in UI
-
-**CRUD Fornitori (Generico):**
-- [ ] Anagrafica fornitore (nome, P.IVA, contatti, note)
-- [ ] Lista fornitori con ricerca e filtri
-- [ ] Dettaglio fornitore con storico
-- [ ] Import fornitori da CSV
-
-**Associazioni:**
-- [ ] Associazione prodotti-fornitori (molti a molti)
-- [ ] Prezzo di acquisto per fornitore
-- [ ] Fornitore preferito per prodotto
-- [ ] Tempi di consegna stimati
-
-**Automazione:**
-- [ ] Generazione automatica ordine da suggerimenti
-- [ ] Alert prodotti da riordinare
-
-### Considerazioni Tecniche
-- Relazione molti-a-molti Product-Supplier
-- Entity per Order e OrderItem
-- Integrazione con sistema notifiche
+### User Stories (alto livello)
+- [ ] Configurazione Electron Builder con target NSIS per Windows
+- [ ] Generazione `.exe` portabile e installer `YouTubeMusicDesktopSetup.exe`
+- [ ] Integrazione `electron-updater` con GitHub Releases come canale principale
+- [ ] Flusso `checkForUpdates` all'avvio con download in background
+- [ ] Menu "Verifica aggiornamenti" manuale
+- [ ] Installazione aggiornamenti tramite `quitAndInstall`
 
 ---
 
-## FASE 9: Gestione Resi e Scarti 🟠
+## FASE 8: Security Hardening 🔴
 
-**Branch:** `ralph/returns-management`
-**Stato:** Pianificato
-**Complessita:** Bassa
+**Branch:** `ralph/security-hardening`  
+**Stato:** Pianificato  
+**Complessita:** Media
 
 ### Obiettivo
-Gestione formale dei prodotti resi ai fornitori o scartati.
+Applicare le best practice di sicurezza Electron e limitare la superficie di attacco.
 
-### User Stories
-- [ ] Registrazione reso a fornitore (es. tabacchi danneggiati)
-- [ ] Gestione scarti per fine validità o pacchi invendibili
-- [ ] Movimentazione stock negativa dedicata
-- [ ] Report periodico resi per contabilità
+### User Stories (alto livello)
+- [ ] Verifica e enforcement di `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`, `enableRemoteModule: false`
+- [ ] Implementazione Content Security Policy allineata a YouTube Music
+- [ ] Blocco navigazione verso domini non nella whitelist tramite `will-navigate` e `new-window`
+- [ ] Revisione e limitazione dell'API esposta dal preload (contextBridge) al minimo necessario
 
 ---
 
-## FASE 10: Gestione Clienti e Fidelizzazione 🟠
+## FASE 9: Performance & Ottimizzazioni 🟠
 
-**Branch:** `ralph/customers-loyalty`
-**Stato:** Pianificato
-**Complessita:** Alta (10-12 user stories)
+**Branch:** `ralph/performance-optimizations`  
+**Stato:** Pianificato  
+**Complessita:** Media
 
 ### Obiettivo
-Sistema di fidelizzazione clienti con punti e promozioni.
+Ridurre l'impatto su RAM e CPU rispetto a una tipica app Electron.
 
-### User Stories
-
-**Anagrafica Clienti:**
-- [ ] CRUD cliente (nome, telefono, email, note)
-- [ ] Tessera fedelta con codice/barcode
-- [ ] Storico acquisti per cliente
-- [ ] Preferenze cliente
-
-**Sistema Punti:**
-- [ ] Configurazione regole accumulo punti
-- [ ] Accumulo automatico punti su vendita
-- [ ] Visualizzazione saldo punti
-- [ ] Storico movimenti punti
-
-**Premi e Promozioni:**
-- [ ] Catalogo premi riscattabili
-- [ ] Riscatto premio con punti
-- [ ] Promozioni temporanee (2x punti, sconto)
-- [ ] Promozioni per categoria/prodotto
-
-**Comunicazione:**
-- [ ] Export lista clienti per marketing
-- [ ] Segmentazione clienti (top spender, dormienti)
-- [ ] Template messaggi promozionali
-
-### Considerazioni Tecniche
-- Entity Customer con relazione a Sales
-- Entity LoyaltyTransaction per movimenti punti
-- Privacy: consenso GDPR per dati cliente
+### User Stories (alto livello)
+- [ ] Disabilitazione DevTools in produzione
+- [ ] Background throttling per renderer quando l'app e in background
+- [ ] Lazy loading di moduli non critici (Discord RPC, updater)
+- [ ] Politica LRU per la cache artwork con limite dimensione configurabile
+- [ ] Verifica manuale metriche chiave (CPU, RAM, startup) durante il piano di test
 
 ---
 
-## FASE 11: Integrazione Bilancia e Dispositivi 🟡
+## FASE 10: Piano di Test 🟠
 
-**Branch:** `ralph/hardware-integration`
-**Stato:** Futuro
-**Complessita:** Alta
+**Branch:** `ralph/testing-plan`  
+**Stato:** Pianificato  
+**Complessita:** Bassa-Media
 
 ### Obiettivo
-Integrazione con hardware comune in tabaccheria.
+Definire e automatizzare dove possibile il piano di test funzionale e di performance.
 
-### User Stories
-
-**Bilancia:**
-- [ ] Lettura peso da bilancia seriale
-- [ ] Calcolo prezzo prodotti a peso
-- [ ] Calibrazione bilancia
-
-**Lettore Barcode:**
-- [ ] Supporto scanner USB/seriale
-- [ ] Ricerca prodotto da barcode
-- [ ] Aggiunta rapida a vendita
-
-**Stampante Scontrini:**
-- [ ] Configurazione stampante termica
-- [ ] Stampa scontrino vendita
-- [ ] Stampa report su stampante termica
-
-**Cassetto Cassa:**
-- [ ] Apertura automatica cassetto
-- [ ] Apertura manuale con log
-
-### Considerazioni Tecniche
-- Comunicazione seriale (System.IO.Ports)
-- Driver stampante ESC/POS
-- Astrazione hardware per testabilita
+### User Stories (alto livello)
+- [ ] Checklist test funzionali per player, media keys, tray, notifiche, mini player, shortcut
+- [ ] Script o documentazione per test regressione prima dei rilasci
+- [ ] Linee guida per monitoraggio CPU/RAM/startup durante i test
 
 ---
 
-## FASE 12: Integrazione Fatturazione Elettronica 🟠
+## FASE 11: Distribuzione & Code Signing 🟠
 
-**Branch:** `ralph/e-invoicing`
-**Stato:** In corso
-**Complessita:** Alta
-
-### Obiettivo
-Generazione fatture elettroniche e corrispettivi telematici.
-
-### User Stories
-
-**Autenticazione AdE:**
-- [x] Autenticazione Fisconline a 6 step
-- [x] Gestione sessione con timeout
-- [x] Token B2B per API successive
-
-**Download Fatture:**
-- [x] Download lista fatture ricevute
-- [x] Download lista fatture emesse
-- [x] Download file XML/P7M fattura
-- [x] Download metadati e notifiche SDI
-- [x] Parsing XML fattura (FatturaPaParserService)
-- [x] View per visualizzazione fatture AdE
-
-**Fatture Elettroniche:**
-- [ ] Generazione XML FatturaPA
-- [ ] Validazione XML pre-invio
-- [ ] Invio a SDI (tramite intermediario)
-- [ ] Ricezione notifiche SDI
-- [ ] Conservazione digitale a norma
-
-**Corrispettivi Telematici:**
-- [ ] Integrazione RT (Registratore Telematico)
-- [ ] Invio corrispettivi giornalieri
-- [ ] Gestione anomalie invio
-- [ ] Storico invii
-
-**Anagrafica Fiscale:**
-- [x] Dati fiscali tabaccheria (ShopProfile)
-- [x] Gestione aliquote IVA
-- [ ] Codici natura IVA
-- [ ] Ritenute e contributi
-
-### Considerazioni Tecniche
-- Libreria per generazione XML FatturaPA
-- Certificati digitali per firma
-- Integrazione con intermediario SDI (Aruba, Infocert)
-- Normativa AAMS per tabacchi
-
----
-
-## FASE 13: Multi-Negozio 🟡
-
-**Branch:** `ralph/multi-store`
-**Stato:** Futuro
-**Complessita:** Molto Alta
+**Branch:** `ralph/distribution-and-signing`  
+**Stato:** Pianificato  
+**Complessita:** Media
 
 ### Obiettivo
-Gestione centralizzata di piu punti vendita.
+Distribuire il client in modo sicuro e affidabile con firma del codice.
 
-### User Stories
-
-**Gestione Negozi:**
-- [ ] Anagrafica punto vendita
-- [ ] Configurazione per negozio (listini, soglie)
-- [ ] Dashboard multi-negozio
-- [ ] Switch rapido tra negozi
-
-**Inventario Distribuito:**
-- [ ] Giacenze per negozio
-- [ ] Trasferimenti tra negozi
-- [ ] Richieste di trasferimento
-- [ ] Storico movimenti inter-negozio
-
-**Report Consolidati:**
-- [ ] Vendite aggregate tutti i negozi
-- [ ] Confronto performance negozi
-- [ ] Classifica negozi per fatturato
-- [ ] Report per singolo negozio
-
-**Sincronizzazione:**
-- [ ] Database centralizzato o sync
-- [ ] Gestione conflitti
-- [ ] Modalita offline
-
-### Considerazioni Tecniche
-- Architettura: DB centrale vs sync P2P
-- Considerare migrazione a SQL Server
-- API REST per comunicazione
-- Gestione conflitti merge
-
----
-
-## FASE 14: App Mobile Companion 🟢
-
-**Branch:** `ralph/mobile-app`
-**Stato:** In corso (Backend parziale)
-
-### Obiettivo
-App mobile per monitoraggio e operazioni base da remoto.
-
-### User Stories
-
-**Backend Mobile:**
-- [x] Entity MobileDevice per gestione dispositivi
-- [x] MobileDeviceRepository per persistenza
-- [ ] API per registrazione dispositivo
-- [ ] Notifiche push (backend)
-
-**Frontend Mobile:**
-- [ ] Dashboard vendite real-time
-- [ ] Notifiche push scorte basse
-- [ ] Consultazione giacenze
-- [ ] Approvazione ordini fornitori
-- [ ] Report giornaliero push
-
----
-
-## FASE 15: Intelligenza Artificiale e Previsioni 🟢
-
-**Branch:** `ralph/ai-forecasting`
-**Stato:** In corso (Parzialmente implementato)
-
-### Obiettivo
-Previsioni intelligenti per ottimizzare gestione.
-
-### User Stories
-
-**Previsione Vendite:**
-- [x] Calcolo stock di sicurezza dinamico
-- [x] Analisi storico vendite (OrderHistoryAnalysisService)
-- [x] Previsione domanda con algoritmi di smoothing
-- [x] Suggerimento quantità riordino ottimale
-- [ ] Previsione vendite prossima settimana
-
-**Machine Learning:**
-- [ ] Identificazione anomalie vendite
-- [ ] Clustering clienti automatico
-- [ ] Ottimizzazione prezzi
-
----
-
-## FASE 16: Documentazione e Assistente IA 🔴
-
-**Branch:** `ralph/doc-ai-integration`
-**Stato:** In corso
-**Complessita:** Media (6 user stories)
-
-### Obiettivo
-Integrare i file di documentazione Markdown nell'app e usarli come base di conoscenza per l'IA.
-
-### User Stories
-- [x] PRD aggiornato con US-043 e US-044
-- [x] Integrazione LLamaSharp per modello locale GGUF (US-040)
-- [x] UI dialog per configurazione modello locale (US-041)
-- [x] Download modello GGUF consigliato (US-042)
-- [x] Visualizzatore Markdown WPF (Markdig)
-- [x] HelpViewModel e navigazione sidebar
-- [x] DocumentationPlugin per Semantic Kernel (RAG)
-- [x] Test risposte IA basate su doc
-- [x] Spiegazione IA in linguaggio naturale dei suggerimenti ordine (US-045)
-- [x] Sintesi esecutiva IA del report vendite (US-046)
-- [x] Suggerimenti automatici eventi calendario da pattern ordini (US-047)
-- [ ] Helpdesk contestuale basato sulla schermata attiva (US-048)
+### User Stories (alto livello)
+- [ ] Configurazione canale GitHub Releases con changelog
+- [ ] Integrazione con sito web/landing page per download diretto
+- [ ] Configurazione certificato di Code Signing in Electron Builder
+- [ ] Verifica comportamento con Windows SmartScreen e flusso installazione/disinstallazione
 
 ---
 
 ## Roadmap Suggerita
 
 ```
-2025:    Fasi 1-3 (Notifiche, Report, Backup) - COMPLETAMENTO
-2026 Q1: Fasi 4-7 (ADM Sync, Gratta e Vinci, Cassa base, Sicurezza)
-2026 Q2: Fasi 8-10 (Fornitori, Fatturazione, AI Previsioni)
-2026 Q3: Fasi 11-12 (Hardware, Fatturazione avanzata)
-2026+:   Fasi 13-16 (Multi-negozio, Mobile, Documentazione IA)
+2026 Q1: Fasi 1-3 (Core shell, Media controls, Tray/Notifiche/Mini player)
+2026 Q2: Fasi 4-7 (Theme/AdBlock, Persistenza, Discord RPC, Auto update/Packaging)
+2026 Q3: Fasi 8-9 (Security hardening, Performance)
+2026 Q4: Fasi 10-11 (Testing strutturato, Distribuzione e Code signing)
 ```
 
 ---
@@ -586,19 +237,22 @@ Integrare i file di documentazione Markdown nell'app e usarli come base di conos
 ## Note Tecniche Generali
 
 ### Stack Tecnologico
-- **Frontend:** WPF con MVVM (CommunityToolkit.Mvvm)
-- **Database:** SQLite (locale) / SQL Server (multi-negozio)
-- **ORM:** Entity Framework Core
-- **Report:** QuestPDF, LiveCharts2
-- **Hardware:** System.IO.Ports, ESC/POS
+- **Runtime:** Electron 28+ (Chromium + Node.js)
+- **Backend:** Node.js 20 LTS (processo main)
+- **Frontend:** HTML/CSS/JS (renderer webview YouTube Music)
+- **Persistenza:** electron-store (configurazioni JSON in AppData)
+- **Packaging:** Electron Builder + NSIS
+- **Aggiornamenti:** electron-updater (GitHub Releases / CDN)
 
 ### Principi di Sviluppo
-1. **SOLID** - Codice manutenibile e testabile
-2. **DRY** - Riutilizzo tramite servizi condivisi
-3. **KISS** - Semplicita prima di tutto
-4. **Mobile-first thinking** - UI responsive e touch-friendly
+1. **SOLID/Modularita** - Moduli separati per window, tray, media, updater
+2. **DRY** - Riutilizzo di helper comuni (config, logging, util)
+3. **KISS** - Implementazioni semplici, senza over-engineering
+4. **Security-first** - Flag Electron sicuri, CSP, IPC minimizzato
 
-### Conformita e Normative
-- **GDPR** - Gestione dati clienti
-- **AAMS** - Normativa tabacchi e valori bollati
-- **Agenzia Entrate** - Fatturazione elettronica e corrispettivi
+### Obiettivi di Performance
+- CPU media in idle < 5%  
+- CPU in riproduzione < 15%  
+- RAM target < 250 MB in riproduzione standard  
+- Tempo di avvio < 3 secondi su SSD
+
