@@ -16,6 +16,9 @@
  *   theme  {'light'|'dark'|'system'}  default: 'system'
  *     Controls the colour scheme of app-owned UI (mini player, etc.).
  *     'system' defers to the OS setting via nativeTheme.
+ *   adBlockUI  {boolean}  default: true
+ *     When true, known ad/promo DOM elements in YouTube Music are hidden via
+ *     CSS injection and a MutationObserver (cosmetic only, no network blocking).
  */
 
 const Store = require('electron-store');
@@ -29,6 +32,7 @@ const store = new Store({
     showNotifications: true,
     artworkCacheMaxSize: DEFAULT_ARTWORK_CACHE_MAX_SIZE,
     theme: 'system',
+    adBlockUI: true,
   },
 });
 
@@ -112,6 +116,26 @@ function setTheme(value) {
   store.set('theme', value);
 }
 
+// ---------------------------------------------------------------------------
+// adBlockUI
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns whether cosmetic ad-blocking is enabled.
+ * @returns {boolean}
+ */
+function getAdBlockUI() {
+  return store.get('adBlockUI');
+}
+
+/**
+ * Persists the adBlockUI setting.
+ * @param {boolean} value
+ */
+function setAdBlockUI(value) {
+  store.set('adBlockUI', Boolean(value));
+}
+
 module.exports = {
   getEnableGlobalShortcuts,
   setEnableGlobalShortcuts,
@@ -121,4 +145,6 @@ module.exports = {
   setArtworkCacheMaxSize,
   getTheme,
   setTheme,
+  getAdBlockUI,
+  setAdBlockUI,
 };

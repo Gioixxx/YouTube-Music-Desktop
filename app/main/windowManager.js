@@ -17,6 +17,7 @@
 const { BrowserWindow, screen, shell } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
+const { initAdBlock } = require('./adBlockManager');
 
 /** The URL loaded by the main window. */
 const YOUTUBE_MUSIC_URL = 'https://music.youtube.com';
@@ -153,6 +154,9 @@ function createMainWindow() {
       maximized: isMaximized,
     });
   });
+
+  // Cosmetic ad-blocking: inject CSS + MutationObserver on every page load.
+  initAdBlock(win);
 
   win.loadURL(YOUTUBE_MUSIC_URL);
 
