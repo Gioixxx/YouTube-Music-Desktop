@@ -12,6 +12,11 @@
  *  2. CSP via onHeadersReceived: injects a Content-Security-Policy header
  *     on all responses so that only YouTube Music / Google origins are
  *     permitted to load scripts, styles, frames, and other resources.
+ *
+ *  3. DevTools lock-down in production: when the app is packaged
+ *     (app.isPackaged === true) every WebContents has its DevTools closed
+ *     immediately on open, making them inaccessible from keyboard shortcuts
+ *     (F12 / Ctrl+Shift+I) or the Electron default menu.
  */
 
 const { app, session, shell } = require('electron');
@@ -80,9 +85,23 @@ function attachNavigationGuard(contents) {
  * guards are applied to every WebContents created during the app's lifetime,
  * including OAuth popup windows opened via setWindowOpenHandler.
  */
+/**
+ * In production builds (app.isPackaged), closes DevTools immediately when
+ * they are opened via any means (keyboard shortcut, Electron menu, etc.).
+ *
+ * @param {Electron.WebContents} contents
+ */
+function attachDevToolsGuard(contents) {
+  if (!app.isPackaged) return;
+  contents.on('devtools-opened', () => {
+    contents.closeDevTools();
+  });
+}
+
 function registerWebContentsCreatedHandler() {
   app.on('web-contents-created', (_event, contents) => {
     attachNavigationGuard(contents);
+    attachDevToolsGuard(contents);
   });
 }
 

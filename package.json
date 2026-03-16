@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "build": "echo 'Build check OK' && exit 0",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "release": "electron-builder --win --publish always"
   },
   "keywords": [
     "youtube",
@@ -18,7 +19,8 @@
   "license": "MIT",
   "dependencies": {
     "discord-rpc": "^4.0.1",
-    "electron-store": "^8.1.0"
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.8.3"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -45,16 +47,29 @@
           ]
         }
       ],
-      "icon": "assets/icons/icon.ico"
+      "icon": "assets/icons/icon.ico",
+      "signingHashAlgorithms": ["sha256"],
+      "certificateFile": "${env.WIN_CSC_LINK}",
+      "certificatePassword": "${env.WIN_CSC_KEY_PASSWORD}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "artifactName": "YouTubeMusicDesktopSetup.exe",
       "installerIcon": "assets/icons/icon.ico",
       "uninstallerIcon": "assets/icons/icon.ico",
       "installerHeaderIcon": "assets/icons/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "YouTubeMusicDesktop.exe"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Gioixxx",
+      "repo": "YouTube-Music-Desktop",
+      "releaseType": "release"
     },
     "files": [
       "app/**/*",

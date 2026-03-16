@@ -99,6 +99,9 @@ function createMainWindow() {
       nodeIntegration: false,
       // enableRemoteModule was removed in Electron 14+; kept explicit for clarity.
       enableRemoteModule: false,
+      // Keep timers and audio running when the window is hidden/minimised so
+      // music playback is never throttled by Chromium's background policy.
+      backgroundThrottling: false,
     },
   });
 

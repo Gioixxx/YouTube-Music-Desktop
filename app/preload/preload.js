@@ -1,12 +1,35 @@
 /**
  * Preload script — secure bridge between main process and renderer.
  *
- * Rules:
- *  - contextIsolation: true  → this file runs in an isolated context.
- *  - sandbox: true           → no Node.js APIs available here directly.
- *  - Only expose what the renderer strictly needs via contextBridge.
+ * Security model:
+ *  - contextIsolation: true  → this file runs in an isolated context;
+ *                               the renderer cannot access Node/Electron globals.
+ *  - sandbox: true           → no Node.js built-ins available here.
+ *  - Only the whitelist below is surfaced via contextBridge.exposeInMainWorld.
  *
- * Exposed API: window.ytmdAPI
+ * Exposed surface: window.ytmdAPI
+ * ──────────────────────────────────────────────────────────────────────────
+ *  ytmdAPI.version          string    App version string.
+ *
+ *  ytmdAPI.send(ch, ...args)          One-way IPC to main (channels below).
+ *  ytmdAPI.invoke(ch, ...args)        Request/response IPC (channels below).
+ *  Allowed send/invoke channels:
+ *    'media:play'       Trigger play.
+ *    'media:pause'      Trigger pause.
+ *    'media:next'       Skip to next track.
+ *    'media:previous'   Go to previous track.
+ *    'track:changed'    Notify main of new track metadata.
+ *    'shortcuts:reload' Reload keyboard shortcuts.
+ *    'theme:set'        Apply a theme.
+ *
+ *  ytmdAPI.on(ch, listener) → unsubscribe()
+ *                             Listen for messages from main (channels below).
+ *  Allowed receive channels:
+ *    'theme:changed'    Notified when active theme changes.
+ *    'settings:updated' Notified when user settings change.
+ *    'miniPlayer:update'Notified to refresh mini-player track info.
+ * ──────────────────────────────────────────────────────────────────────────
+ * Nothing outside this surface is reachable from the renderer.
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
