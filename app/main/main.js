@@ -2,8 +2,10 @@
 
 const { app, BrowserWindow } = require('electron');
 const { createMainWindow } = require('./windowManager');
+const { initSecurity } = require('./securityManager');
 
 app.whenReady().then(() => {
+  initSecurity();
   createMainWindow();
 
   app.on('activate', () => {
