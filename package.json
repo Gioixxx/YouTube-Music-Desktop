@@ -7,7 +7,9 @@
     "start": "electron .",
     "build": "echo 'Build check OK' && exit 0",
     "dist": "electron-builder --win",
-    "release": "electron-builder --win --publish always"
+    "release": "npm run release:stable",
+    "release:stable": "electron-builder --win --publish always -c.publish.releaseType=release",
+    "release:prerelease": "electron-builder --win --publish always -c.publish.releaseType=prerelease"
   },
   "keywords": [
     "youtube",
