@@ -6,11 +6,34 @@
  * Responsible for creating and managing the main BrowserWindow.
  * Persists window state (size, position, maximized) via electron-store
  * so the window reopens in the same place across launches.
+ *
+ * Security model:
+ *   - contextIsolation + sandbox prevent renderer from accessing Node APIs
+ *   - Navigation is restricted to YouTube Music and Google auth domains
+ *   - New-window requests for auth flows open inside the app; all others
+ *     are blocked (handled by the caller if needed)
  */
 
-const { BrowserWindow, screen } = require('electron');
+const { BrowserWindow, screen, shell } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
+
+/** The URL loaded by the main window. */
+const YOUTUBE_MUSIC_URL = 'https://music.youtube.com';
+
+/**
+ * Domains that the renderer is allowed to navigate to.
+ * Covers YouTube Music itself and the Google OAuth / login flow.
+ */
+const ALLOWED_NAVIGATION_HOSTS = [
+  'music.youtube.com',
+  'www.youtube.com',
+  'youtube.com',
+  'accounts.google.com',
+  'accounts.youtube.com',
+  'myaccount.google.com',
+  'google.com',
+];
 
 /** Persistent store for window state. */
 const store = new Store({
@@ -64,12 +87,54 @@ function createMainWindow() {
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      // enableRemoteModule was removed in Electron 14+; kept explicit for clarity.
+      enableRemoteModule: false,
     },
   });
 
   if (saved.maximized) {
     win.maximize();
   }
+
+  // Override the user-agent to remove the Electron identifier so that
+  // YouTube Music does not serve a degraded or blocked experience.
+  const chromeUA = win.webContents.getUserAgent()
+    .replace(/\s*Electron\/[\d.]+/, '');
+  win.webContents.setUserAgent(chromeUA);
+
+  /**
+   * Restrict in-page navigation to allowed hosts.
+   * This covers standard link clicks and JS-driven location changes.
+   */
+  win.webContents.on('will-navigate', (event, url) => {
+    try {
+      const { hostname } = new URL(url);
+      if (!ALLOWED_NAVIGATION_HOSTS.includes(hostname)) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    } catch {
+      event.preventDefault();
+    }
+  });
+
+  /**
+   * Handle window.open() calls (e.g. Google OAuth popup).
+   * Auth-related hosts open inside the app; everything else goes to the
+   * system browser.
+   */
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const { hostname } = new URL(url);
+      if (ALLOWED_NAVIGATION_HOSTS.includes(hostname)) {
+        return { action: 'allow' };
+      }
+    } catch {
+      // malformed URL — block it
+    }
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
 
   /**
    * Persist window state just before the window closes.
@@ -89,7 +154,7 @@ function createMainWindow() {
     });
   });
 
-  win.loadFile(path.join(__dirname, '../renderer/index.html'));
+  win.loadURL(YOUTUBE_MUSIC_URL);
 
   return win;
 }
