@@ -9,6 +9,8 @@
  * Current keys:
  *   enableGlobalShortcuts  {boolean}  default: true
  *     When false, no global keyboard shortcuts are registered.
+ *   showNotifications  {boolean}  default: true
+ *     When false, track-change notifications are suppressed.
  */
 
 const Store = require('electron-store');
@@ -17,6 +19,7 @@ const store = new Store({
   name: 'app-config',
   defaults: {
     enableGlobalShortcuts: true,
+    showNotifications: true,
   },
 });
 
@@ -40,4 +43,29 @@ function setEnableGlobalShortcuts(value) {
   store.set('enableGlobalShortcuts', Boolean(value));
 }
 
-module.exports = { getEnableGlobalShortcuts, setEnableGlobalShortcuts };
+// ---------------------------------------------------------------------------
+// showNotifications
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns whether track-change notifications are enabled.
+ * @returns {boolean}
+ */
+function getShowNotifications() {
+  return store.get('showNotifications');
+}
+
+/**
+ * Persists the showNotifications setting.
+ * @param {boolean} value
+ */
+function setShowNotifications(value) {
+  store.set('showNotifications', Boolean(value));
+}
+
+module.exports = {
+  getEnableGlobalShortcuts,
+  setEnableGlobalShortcuts,
+  getShowNotifications,
+  setShowNotifications,
+};
