@@ -7,12 +7,14 @@ const { initMediaSession, unregisterMediaKeys } = require('./mediaSessionManager
 const { initShortcuts, unregisterShortcuts } = require('./shortcuts');
 const { initNotifications } = require('./notifications');
 const { initTray, destroyTray } = require('./tray');
+const { initMiniPlayer, destroyMiniPlayerWindow } = require('./miniPlayer');
 
 app.whenReady().then(() => {
   initSecurity();
   initMediaSession();
   initShortcuts();
   initNotifications();
+  initMiniPlayer();
   initTray();
   createMainWindow();
 
@@ -26,6 +28,7 @@ app.whenReady().then(() => {
 app.on('will-quit', () => {
   unregisterMediaKeys();
   unregisterShortcuts();
+  destroyMiniPlayerWindow();
   destroyTray();
 });
 

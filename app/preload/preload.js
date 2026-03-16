@@ -31,6 +31,7 @@ const ALLOWED_SEND_CHANNELS = [
 const ALLOWED_RECEIVE_CHANNELS = [
   'theme:changed',
   'settings:updated',
+  'miniPlayer:update',
 ];
 
 // ---------------------------------------------------------------------------

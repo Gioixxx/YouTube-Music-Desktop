@@ -20,6 +20,7 @@ const { Tray, Menu, app, nativeImage } = require('electron');
 const path = require('path');
 const { togglePlay, nextTrack, previousTrack } = require('./mediaController');
 const { getMainWindow } = require('./windowManager');
+const { toggleMiniPlayerWindow } = require('./miniPlayer');
 
 /** @type {Tray | null} */
 let tray = null;
@@ -56,6 +57,11 @@ function _buildContextMenu() {
     {
       label: 'Previous',
       click: () => previousTrack(),
+    },
+    { type: 'separator' },
+    {
+      label: 'Mini Player',
+      click: () => toggleMiniPlayerWindow(),
     },
     { type: 'separator' },
     {
