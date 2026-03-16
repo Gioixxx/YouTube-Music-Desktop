@@ -27,6 +27,12 @@ app.whenReady().then(() => {
   });
 });
 
+app.on('before-quit', () => {
+  // Signal windowManager that the close event is a real quit, not a
+  // "close to tray" action, so the window is not hidden instead of closed.
+  app.isQuiting = true;
+});
+
 app.on('will-quit', () => {
   unregisterMediaKeys();
   unregisterShortcuts();

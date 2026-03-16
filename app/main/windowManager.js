@@ -14,10 +14,15 @@
  *     are blocked (handled by the caller if needed)
  */
 
-const { BrowserWindow, screen, shell } = require('electron');
+const { BrowserWindow, screen, shell, app } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const { initAdBlock } = require('./adBlockManager');
+const {
+  getStartMinimized,
+  getMinimizeToTray,
+  getCloseToTray,
+} = require('./settings');
 
 /** The URL loaded by the main window. */
 const YOUTUBE_MUSIC_URL = 'https://music.youtube.com';
@@ -83,6 +88,8 @@ function createMainWindow() {
     width: saved.width,
     height: saved.height,
     ...(restorePosition ? { x: saved.x, y: saved.y } : {}),
+    // Hide on launch when startMinimized is set; shown after ready-to-show.
+    show: !getStartMinimized(),
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
@@ -95,6 +102,11 @@ function createMainWindow() {
 
   if (saved.maximized) {
     win.maximize();
+  }
+
+  // Show once ready when startMinimized is false (default Electron behaviour).
+  if (!getStartMinimized()) {
+    win.once('ready-to-show', () => win.show());
   }
 
   // Override the user-agent to remove the Electron identifier so that
@@ -138,14 +150,23 @@ function createMainWindow() {
   });
 
   /**
-   * Persist window state just before the window closes.
-   * We use getNormalBounds() so we save the restored size even if
-   * the window is maximised at close time.
+   * minimizeToTray: hide to tray instead of minimizing to the taskbar.
    */
-  win.on('close', () => {
+  win.on('minimize', (event) => {
+    if (getMinimizeToTray()) {
+      event.preventDefault();
+      win.hide();
+    }
+  });
+
+  /**
+   * closeToTray: hide to tray instead of quitting when the user closes the
+   * window.  Persist window state in both cases.
+   */
+  win.on('close', (event) => {
+    // Always persist bounds first.
     const isMaximized = win.isMaximized();
     const bounds = win.getNormalBounds();
-
     store.set('windowState', {
       width: bounds.width,
       height: bounds.height,
@@ -153,6 +174,11 @@ function createMainWindow() {
       y: bounds.y,
       maximized: isMaximized,
     });
+
+    if (getCloseToTray() && !app.isQuiting) {
+      event.preventDefault();
+      win.hide();
+    }
   });
 
   // Cosmetic ad-blocking: inject CSS + MutationObserver on every page load.
