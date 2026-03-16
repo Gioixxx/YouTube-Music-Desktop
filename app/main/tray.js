@@ -21,6 +21,7 @@ const path = require('path');
 const { togglePlay, nextTrack, previousTrack } = require('./mediaController');
 const { getMainWindow } = require('./windowManager');
 const { toggleMiniPlayerWindow } = require('./miniPlayer');
+const { checkForUpdatesManual } = require('./updater');
 
 /** @type {Tray | null} */
 let tray = null;
@@ -73,6 +74,11 @@ function _buildContextMenu() {
           win.focus();
         }
       },
+    },
+    { type: 'separator' },
+    {
+      label: 'Check for updates',
+      click: () => checkForUpdatesManual(),
     },
     { type: 'separator' },
     {

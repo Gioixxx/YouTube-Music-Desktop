@@ -11,6 +11,7 @@ const { initTray, destroyTray } = require('./tray');
 const { initMiniPlayer, destroyMiniPlayerWindow } = require('./miniPlayer');
 const { initTheme } = require('./themeManager');
 const { initDiscordRpc, destroyDiscordRpc } = require('./discordRpc');
+const { initUpdater } = require('./updater');
 
 app.whenReady().then(() => {
   initSecurity();
@@ -19,6 +20,7 @@ app.whenReady().then(() => {
   initShortcuts();
   initNotifications();
   initDiscordRpc();
+  initUpdater();
   initMiniPlayer();
   initTray();
   createMainWindow();
