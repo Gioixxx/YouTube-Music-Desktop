@@ -243,4 +243,4 @@ function toggleMiniPlayer() {
   }
 }
 
-module.exports = { createMainWindow, toggleVisibility, toggleMiniPlayer };
+module.exports = { createMainWindow, getMainWindow, toggleVisibility, toggleMiniPlayer };
