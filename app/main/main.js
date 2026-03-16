@@ -8,9 +8,11 @@ const { initShortcuts, unregisterShortcuts } = require('./shortcuts');
 const { initNotifications } = require('./notifications');
 const { initTray, destroyTray } = require('./tray');
 const { initMiniPlayer, destroyMiniPlayerWindow } = require('./miniPlayer');
+const { initTheme } = require('./themeManager');
 
 app.whenReady().then(() => {
   initSecurity();
+  initTheme();
   initMediaSession();
   initShortcuts();
   initNotifications();

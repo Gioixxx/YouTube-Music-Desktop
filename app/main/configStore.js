@@ -13,6 +13,9 @@
  *     When false, track-change notifications are suppressed.
  *   artworkCacheMaxSize  {number}  default: 104857600 (100 MB)
  *     Maximum total size in bytes for the artwork cache before LRU eviction.
+ *   theme  {'light'|'dark'|'system'}  default: 'system'
+ *     Controls the colour scheme of app-owned UI (mini player, etc.).
+ *     'system' defers to the OS setting via nativeTheme.
  */
 
 const Store = require('electron-store');
@@ -25,6 +28,7 @@ const store = new Store({
     enableGlobalShortcuts: true,
     showNotifications: true,
     artworkCacheMaxSize: DEFAULT_ARTWORK_CACHE_MAX_SIZE,
+    theme: 'system',
   },
 });
 
@@ -88,6 +92,26 @@ function setArtworkCacheMaxSize(bytes) {
   store.set('artworkCacheMaxSize', Number(bytes));
 }
 
+// ---------------------------------------------------------------------------
+// theme
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the configured theme preference.
+ * @returns {'light'|'dark'|'system'}
+ */
+function getTheme() {
+  return store.get('theme');
+}
+
+/**
+ * Persists the theme preference.
+ * @param {'light'|'dark'|'system'} value
+ */
+function setTheme(value) {
+  store.set('theme', value);
+}
+
 module.exports = {
   getEnableGlobalShortcuts,
   setEnableGlobalShortcuts,
@@ -95,4 +119,6 @@ module.exports = {
   setShowNotifications,
   getArtworkCacheMaxSize,
   setArtworkCacheMaxSize,
+  getTheme,
+  setTheme,
 };
