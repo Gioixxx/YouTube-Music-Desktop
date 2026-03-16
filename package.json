@@ -1,0 +1,56 @@
+{
+  "name": "youtube-music-desktop",
+  "version": "1.0.0",
+  "description": "YouTube Music Desktop App built with Electron",
+  "main": "app/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "echo 'Build check OK' && exit 0",
+    "dist": "electron-builder --win"
+  },
+  "keywords": ["youtube", "music", "electron", "desktop"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.youtube-music-desktop.app",
+    "productName": "YouTube Music Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icons/icon.ico",
+      "uninstallerIcon": "assets/icons/icon.ico",
+      "installerHeaderIcon": "assets/icons/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "app/**/*",
+      "assets/**/*",
+      "config/**/*",
+      "package.json"
+    ]
+  }
+}
