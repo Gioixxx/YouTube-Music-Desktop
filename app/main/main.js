@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu } = require('electron');
 const { getCloseToTray, getEnableDiscordRPC } = require('./settings');
 const { createMainWindow } = require('./windowManager');
 const { initSecurity } = require('./securityManager');
@@ -15,6 +15,7 @@ const { initTheme } = require('./themeManager');
 let destroyDiscordRpc = () => {};
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   initSecurity();
   initTheme();
   initMediaSession();
